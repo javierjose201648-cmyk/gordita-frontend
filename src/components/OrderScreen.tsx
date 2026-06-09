@@ -41,8 +41,8 @@ export default function OrderScreen() {
   const [phase,         setPhase]         = useState<Phase>('count')
   const [countInput,    setCountInput]    = useState('')
   const [gorditasTotal, setGorditasTotal] = useState(0)
-  // Locked gorditas pre-filled by a combo (e.g. frijoles in Combo Individual).
-  // After "Agregar al pedido" + payment, resetOrder() clears this — next session starts empty.
+  // Confirmed gorditas accumulated across "Agregar al pedido" sessions.
+  // Also holds locked combo gorditas (e.g. frijoles in Combo Individual) while selecting.
   const [items,         setItems]         = useState<OrderItem[]>(() => {
     try { return JSON.parse(localStorage.getItem(ORDER_KEY) ?? '{}').items ?? [] } catch { return [] }
   })
@@ -57,13 +57,11 @@ export default function OrderScreen() {
   const [masaFijaId,    setMasaFijaId]    = useState<number | null>(null)
   const [lockedItemIds,  setLockedItemIds]  = useState<Set<string>>(new Set())
   const [lockedDrinkIds, setLockedDrinkIds] = useState<Set<string>>(new Set())
-  // Tracks which phase triggered PaymentScreen (to return correctly on cancel)
-  const [paymentSource, setPaymentSource] = useState<Phase>('count')
   // Session tally: gorditas sold this shift, keyed by masa label
   const [soldByMasa,    setSoldByMasa]    = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem(ORDER_KEY) ?? '{}').soldByMasa ?? {} } catch { return {} }
   })
-  // Orders made during this shift
+  // Orders committed to the DB during this shift (shown in left panel)
   const [turnoOrders, setTurnoOrders] = useState<TurnoOrder[]>([])
 
   // ── UI ─────────────────────────────────────────────────────
@@ -132,8 +130,8 @@ export default function OrderScreen() {
 
   // ── Derived ────────────────────────────────────────────────
   // Only count locked items from the CURRENT session + the active draft.
-  // Previously confirmed items (from earlier "Agregar al pedido" sessions) are
-  // already in the DB and must not bleed into this session's progress counter.
+  // Items confirmed in earlier "Agregar al pedido" sessions must not bleed
+  // into this session's progress counter (they're unrelated to the new combo).
   const gorditasAsignadas = items.filter(i => lockedItemIds.has(i.localId)).reduce((s, i) => s + i.cantidad, 0)
                           + draftItems.reduce((s, i) => s + i.cantidad, 0)
   const total             = items.reduce((s, i) => s + i.subtotal, 0)
@@ -167,6 +165,42 @@ export default function OrderScreen() {
       return [...prev, { ...item, localId: crypto.randomUUID() }]
     })
   }, [])
+
+  // Confirm guisados: merge draft into accumulated items and return to count.
+  // Locks are cleared so the next combo session starts fresh without contamination.
+  function handleConfirmGuisados() {
+    if (draftItems.length > 0) {
+      setItems(prev => {
+        let next = [...prev]
+        for (const draft of draftItems) {
+          const existing = next.find(
+            i => i.guisado_id === draft.guisado_id &&
+                 i.tipo_masa_id === draft.tipo_masa_id &&
+                 !lockedItemIds.has(i.localId)
+          )
+          if (existing) {
+            next = next.map(i =>
+              i.localId === existing.localId
+                ? { ...i, cantidad: i.cantidad + draft.cantidad, subtotal: i.subtotal + draft.subtotal }
+                : i
+            )
+          } else {
+            next = [...next, draft]
+          }
+        }
+        return next
+      })
+    }
+    setDraftItems([])
+    // Unlock items and drinks — they are now regular confirmed items
+    setLockedItemIds(new Set())
+    setLockedDrinkIds(new Set())
+    setPromoId(null)
+    setMasaFijaId(null)
+    setPhase('count')
+    setCountInput('')
+    setGorditasTotal(0)
+  }
 
   // Cancel guisados: discard draft and undo combo pre-fills if applicable
   function handleCancelGuisados() {
@@ -234,16 +268,19 @@ export default function OrderScreen() {
   }
 
   // ── Combo handler ──────────────────────────────────────────
+  // Drinks are APPENDED (not replaced) so that a previous combo's soda
+  // is never lost when the employee starts a second combo in the same order.
   function handleSelectCombo(comboId: 1 | 2) {
     const harina = tiposMasa.find(m => m.nombre.toLowerCase().includes('harina'))
     if (!harina) return
 
     if (comboId === 2) {
+      // Combo Familiar: 10 gorditas de harina + Refresco 1.75 combo
       const bebida = refrescos.find(r => r.nombre === 'Refresco 1.75 combo')
       const drinkId = crypto.randomUUID()
       if (bebida) {
         const precio = Number(bebida.precio)
-        setDrinkItems([{
+        setDrinkItems(prev => [...prev, {
           localId: drinkId,
           refresco_id: bebida.id,
           nombre: bebida.nombre,
@@ -262,13 +299,14 @@ export default function OrderScreen() {
       setMasaFijaId(harina.id)
       setPhase('guisados')
     } else {
-      const bebida = refrescos.find(r => r.nombre === 'Lata combo')
+      // Combo Individual: 1 gordita frijoles (locked) + 2 gorditas a elegir + Lata combo
+      const bebida  = refrescos.find(r => r.nombre === 'Lata combo')
       const frijoles = guisados.find(g => g.nombre.toLowerCase().includes('frijol'))
       const drinkId = crypto.randomUUID()
       const itemId  = crypto.randomUUID()
       if (bebida) {
         const precio = Number(bebida.precio)
-        setDrinkItems([{
+        setDrinkItems(prev => [...prev, {
           localId: drinkId,
           refresco_id: bebida.id,
           nombre: bebida.nombre,
@@ -282,7 +320,7 @@ export default function OrderScreen() {
       }
       if (frijoles) {
         const precioMasa = Number(harina.precio)
-        setItems([{
+        setItems(prev => [...prev, {
           localId: itemId,
           guisado_id: frijoles.id,
           guisado_nombre: frijoles.nombre,
@@ -302,9 +340,8 @@ export default function OrderScreen() {
     }
   }
 
-  // ── Payment ────────────────────────────────────────────────
-  // Combines locked combo items (items) + active draft (draftItems) into one order.
-  // After a successful payment, ALL local state is cleared — next session starts fresh.
+  // ── Payment (desde el botón Cobrar en count) ───────────────
+  // Sends all accumulated items + drinks as one order, then resets.
   async function handleConfirmPayment(metodo: 'efectivo' | 'tarjeta') {
     setLoading(true)
     try {
@@ -354,7 +391,7 @@ export default function OrderScreen() {
     />
   )
 
-  // ── Payment overlay ────────────────────────────────────────
+  // ── Payment overlay (Cobrar desde count) ──────────────────
   if (phase === 'payment') {
     return (
       <>
@@ -372,7 +409,7 @@ export default function OrderScreen() {
           drinkItems={drinkItems}
           total={total}
           onConfirm={handleConfirmPayment}
-          onCancel={() => setPhase(paymentSource)}
+          onCancel={() => setPhase('count')}
           loading={loading}
         />
       </>
@@ -390,11 +427,10 @@ export default function OrderScreen() {
       : undefined
 
   const cobrarAction = phase === 'guisados'
-    // "Agregar al pedido" goes directly to PaymentScreen — no accumulation, one order per session.
-    ? () => { setPaymentSource('guisados'); setPhase('payment') }
+    ? handleConfirmGuisados          // acumula localmente y regresa a count
     : phase === 'drinks' || phase === 'combos'
       ? () => setPhase('count')
-      : () => { setPaymentSource('count'); setPhase('payment') }
+      : () => setPhase('payment')    // Cobrar desde count → PaymentScreen
 
   return (
     <div className="h-screen flex flex-col bg-orange-50 overflow-hidden">
@@ -630,7 +666,7 @@ export default function OrderScreen() {
           )}
         </div>
 
-        {/* RIGHT PANEL — shows confirmed + draft items together */}
+        {/* RIGHT PANEL — OrdenActual: draft de la sesión actual + items acumulados */}
         <div className="w-full md:w-52 lg:w-64 shrink-0 min-h-[260px] md:min-h-0">
           <OrderTable
             items={[...items, ...draftItems]}
