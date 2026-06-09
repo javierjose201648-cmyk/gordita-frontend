@@ -69,7 +69,7 @@ export interface Gasto {
   id: number;
   concepto: string;
   monto: number;
-  fecha: string;
+  turno_id: number | null;
   usuario_id: number | null;
   creado_en: string;
 }
