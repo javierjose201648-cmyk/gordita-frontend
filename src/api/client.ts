@@ -1,4 +1,4 @@
-import type { Guisado, TipoMasa, Refresco, CategoriaRefresco, User, Gasto, RefriEntry, ResumenDia } from '../types';
+import type { Guisado, TipoMasa, Refresco, CategoriaRefresco, User, Gasto, RefriEntry, ResumenDia, CajaMovimiento } from '../types';
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3000';
 
@@ -87,10 +87,21 @@ export const api = {
       req<{ message: string }>(`/api/gastos/${id}`, { method: 'DELETE' }),
   },
 
+  // Caja (all users)
+  caja: {
+    getDelTurno: () => req<CajaMovimiento[]>('/api/caja/turno'),
+    create:      (monto: number) =>
+      req<CajaMovimiento>('/api/caja', { method: 'POST', body: JSON.stringify({ monto }) }),
+  },
+
   // Resumen del día (admin only)
   resumen: {
     getHoy:  () => req<ResumenDia>('/api/resumen/hoy'),
-    cerrar:  () => req<{ message: string }>('/api/resumen/cerrar', { method: 'POST' }),
+    cerrar:  (cajaFinal: number) =>
+      req<{ message: string }>('/api/resumen/cerrar', {
+        method: 'POST',
+        body: JSON.stringify({ caja_final: cajaFinal }),
+      }),
   },
 
   // Orders

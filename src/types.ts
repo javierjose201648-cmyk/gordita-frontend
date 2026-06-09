@@ -74,6 +74,15 @@ export interface Gasto {
   creado_en: string;
 }
 
+export interface CajaMovimiento {
+  id: number;
+  turno_id: number;
+  monto: number;
+  usuario_id: number | null;
+  usuario_nombre: string | null;
+  creado_en: string;
+}
+
 export interface GorditaResumen {
   masa_nombre: string;
   cantidad: number;
@@ -89,15 +98,27 @@ export interface RefrescoVendidoResumen {
 export interface ResumenDia {
   turno_id: number;
   turno_inicio: string;
+  // Ventas
   total_ventas: number;
+  ventas_efectivo: number;
+  ventas_tarjeta: number;
+  // Gorditas
   total_gorditas_pesos: number;
   total_refrescos_pesos: number;
   gorditas: GorditaResumen[];
   total_gorditas: number;
+  // Refrescos
   refrescos_vendidos: RefrescoVendidoResumen[];
   total_refrescos: number;
+  // Gastos
   gastos: Gasto[];
   total_gastos: number;
+  // Caja
+  caja_inicial: number;
+  movimientos_caja: CajaMovimiento[];
+  total_movimientos_caja: number;
+  caja_esperada: number;
+  // Refri
   refri_actual: {
     categoria_id: number;
     categoria_nombre: string;

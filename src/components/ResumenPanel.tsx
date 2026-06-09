@@ -262,8 +262,11 @@ export default function ResumenPanel({ onClose, onTurnoCerrado }: Props) {
   const [gastoMonto,    setGastoMonto]    = useState('')
   const [savingGasto,   setSavingGasto]   = useState(false)
 
-  // "Dejar para mañana"
+  // "Dejar para mañana" (refri)
   const [dejarInputs, setDejarInputs] = useState<Record<number, string>>({})
+
+  // Caja: cuánto dejar para el siguiente turno
+  const [cajaFinalInput, setCajaFinalInput] = useState('')
 
   // Estado de cierre
   const [cerrando,   setCerrando]   = useState(false)
@@ -352,8 +355,9 @@ export default function ResumenPanel({ onClose, onTurnoCerrado }: Props) {
         }
       }
 
-      // 3. Cerrar turno en el backend (borra gastos del día)
-      await api.resumen.cerrar()
+      // 3. Cerrar turno en el backend (borra gastos del día, guarda caja_final)
+      const cajaFinal = parseFloat(cajaFinalInput) || 0
+      await api.resumen.cerrar(cajaFinal)
 
       // 4. Notificar a OrderScreen para limpiar contador local
       onTurnoCerrado()
@@ -520,12 +524,97 @@ export default function ResumenPanel({ onClose, onTurnoCerrado }: Props) {
               )}
             </Card>
 
-            {/* Total ingresos */}
-            <div className="flex items-center justify-between bg-green-50 border-2 border-green-200
-                            rounded-2xl px-5 py-3">
-              <span className="font-black text-green-800 text-base">💰 Total ingresos del día</span>
-              <span className="font-black text-green-700 text-2xl">${totalVentas.toFixed(2)}</span>
+            {/* Total ingresos — desglose efectivo / tarjeta */}
+            <div className="bg-green-50 border-2 border-green-200 rounded-2xl px-5 py-3 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-black text-green-800 text-base">💰 Total ingresos del día</span>
+                <span className="font-black text-green-700 text-2xl">${totalVentas.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm border-t border-green-200 pt-1.5 gap-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-green-600">💵</span>
+                  <span className="text-green-700 font-semibold">Efectivo</span>
+                  <span className="font-black text-green-800 ml-auto">${resumen.ventas_efectivo.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-blue-500">💳</span>
+                  <span className="text-blue-700 font-semibold">Tarjeta</span>
+                  <span className="font-black text-blue-800 ml-auto">${resumen.ventas_tarjeta.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
+
+            {/* ══ CAJA ═════════════════════════════════════════════ */}
+            <Card title="Caja del turno" icon="💵"
+              badge={`Esperada: $${resumen.caja_esperada.toFixed(2)}`}
+              badgeColor="green">
+
+              {/* Fórmula informativa */}
+              <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2.5 mb-3
+                              text-xs text-emerald-700 space-y-1">
+                <div className="flex justify-between">
+                  <span>Saldo inicial de caja</span>
+                  <span className="font-bold">+${resumen.caja_inicial.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Ventas en efectivo</span>
+                  <span className="font-bold">+${resumen.ventas_efectivo.toFixed(2)}</span>
+                </div>
+                {resumen.total_movimientos_caja > 0 && (
+                  <div className="flex justify-between">
+                    <span>Ingresos manuales a caja</span>
+                    <span className="font-bold">+${resumen.total_movimientos_caja.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span>Gastos del turno</span>
+                  <span className="font-bold text-red-600">-${resumen.total_gastos.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between border-t border-emerald-200 pt-1 font-black">
+                  <span>Debería haber en caja</span>
+                  <span className="text-emerald-800">${resumen.caja_esperada.toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* Movimientos manuales del turno */}
+              {resumen.movimientos_caja.length === 0 ? (
+                <p className="text-gray-400 text-sm text-center py-1">Sin ingresos manuales este turno</p>
+              ) : (
+                <div className="space-y-1.5 mb-2">
+                  {resumen.movimientos_caja.map(m => (
+                    <div key={m.id}
+                      className="flex items-center gap-2 bg-emerald-50 border border-emerald-100
+                                 rounded-lg px-3 py-2.5">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-700 leading-tight">
+                          {m.usuario_nombre ?? 'Sin nombre'}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(m.creado_en).toLocaleTimeString('es-MX', {
+                            hour: '2-digit', minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                      <span className="font-black text-emerald-700 text-sm shrink-0">
+                        +${parseFloat(String(m.monto)).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Tarjeta separado — no entra a la caja */}
+              {resumen.ventas_tarjeta > 0 && (
+                <div className="mt-3 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-blue-700">
+                      💳 Ventas con tarjeta (no están en la caja)
+                    </span>
+                    <span className="font-black text-blue-800">${resumen.ventas_tarjeta.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+            </Card>
 
             {/* ══ GASTOS ═══════════════════════════════════════════ */}
             <Card title="Gastos del turno" icon="💸"
@@ -694,8 +783,47 @@ export default function ResumenPanel({ onClose, onTurnoCerrado }: Props) {
                     ${ganancia.toFixed(2)}
                   </span>
                 </div>
+                {/* Caja info al cierre */}
+                <div className="border-t-2 border-indigo-500 pt-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-indigo-200 text-sm font-semibold">💵 Caja esperada</span>
+                    <span className="font-black text-emerald-300 text-lg">
+                      ${resumen.caja_esperada.toFixed(2)}
+                    </span>
+                  </div>
+                  {resumen.ventas_tarjeta > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-indigo-200 text-sm font-semibold">💳 Ventas tarjeta</span>
+                      <span className="font-black text-blue-300 text-lg">
+                        ${resumen.ventas_tarjeta.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
+
+            {/* ══ ¿CUÁNTO DEJAR EN LA CAJA? ════════════════════════ */}
+            <Card title="¿Cuánto dejar en la caja para mañana?" icon="🏦">
+              <p className="text-xs text-gray-400 mb-3">
+                Este monto será el saldo inicial de caja del siguiente turno.
+                Si no llenas nada, se guardará como $0.
+              </p>
+              <div className="flex items-center gap-3">
+                <span className="text-gray-400 font-bold text-lg shrink-0">$</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={cajaFinalInput}
+                  onChange={e => setCajaFinalInput(e.target.value.replace(/[^\d.]/g, ''))}
+                  placeholder={resumen.caja_esperada.toFixed(2)}
+                  className="flex-1 text-center text-2xl font-black text-indigo-700
+                             border-2 border-indigo-100 rounded-xl outline-none py-2.5
+                             focus:border-indigo-400 bg-indigo-50 transition-colors
+                             placeholder:text-indigo-200"
+                />
+              </div>
+            </Card>
 
             {/* ══ BOTÓN CERRAR TURNO ═══════════════════════════════ */}
             <button

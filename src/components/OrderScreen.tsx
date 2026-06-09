@@ -9,6 +9,7 @@ import OrderTable from './OrderTable'
 import PaymentScreen from './PaymentScreen'
 import AdminPanel   from './AdminPanel'
 import GastosPanel  from './GastosPanel'
+import CajaPanel    from './CajaPanel'
 import RefriPanel   from './RefriPanel'
 import ResumenPanel from './ResumenPanel'
 import ComboPanel   from './ComboPanel'
@@ -67,21 +68,24 @@ export default function OrderScreen() {
   const [toast,      setToast]      = useState<Toast | null>(null)
   const [showAdmin,   setShowAdmin]   = useState(() => window.location.hash === '#admin')
   const [showGastos,  setShowGastos]  = useState(() => window.location.hash === '#gastos')
+  const [showCaja,    setShowCaja]    = useState(() => window.location.hash === '#caja')
   const [showRefri,   setShowRefri]   = useState(() => window.location.hash === '#refri')
   const [showResumen, setShowResumen] = useState(() => window.location.hash === '#resumen')
 
   useEffect(() => {
     if (showAdmin)        window.history.replaceState(null, '', '#admin')
     else if (showGastos)  window.history.replaceState(null, '', '#gastos')
+    else if (showCaja)    window.history.replaceState(null, '', '#caja')
     else if (showRefri)   window.history.replaceState(null, '', '#refri')
     else if (showResumen) window.history.replaceState(null, '', '#resumen')
     else                  window.history.replaceState(null, '', window.location.pathname)
-  }, [showAdmin, showGastos, showRefri, showResumen])
+  }, [showAdmin, showGastos, showCaja, showRefri, showResumen])
 
   useEffect(() => {
     const onHashChange = () => {
       setShowAdmin(window.location.hash === '#admin')
       setShowGastos(window.location.hash === '#gastos')
+      setShowCaja(window.location.hash === '#caja')
       setShowRefri(window.location.hash === '#refri')
       setShowResumen(window.location.hash === '#resumen')
     }
@@ -329,6 +333,7 @@ export default function OrderScreen() {
     setLoading(true)
     try {
       const result = await api.crearOrden({
+        metodo_pago: metodo,
         items: items.map(i => ({
           tipo_masa_id: i.tipo_masa_id,
           guisado_id:   i.guisado_id,
@@ -358,6 +363,7 @@ export default function OrderScreen() {
   // ── Panel overlays ─────────────────────────────────────────
   if (showAdmin)   return <AdminPanel   onClose={() => setShowAdmin(false)} />
   if (showGastos)  return <GastosPanel  onClose={() => setShowGastos(false)} />
+  if (showCaja)    return <CajaPanel    onClose={() => setShowCaja(false)} />
   if (showRefri)   return <RefriPanel   onClose={() => setShowRefri(false)} />
   if (showResumen) return (
     <ResumenPanel
@@ -440,6 +446,13 @@ export default function OrderScreen() {
                          text-white text-sm px-3 py-1.5 rounded-xl transition-colors whitespace-nowrap"
             >
               💸 Gastos
+            </button>
+            <button
+              onClick={() => setShowCaja(true)}
+              className="bg-orange-700 hover:bg-orange-800 active:bg-orange-900
+                         text-white text-sm px-3 py-1.5 rounded-xl transition-colors whitespace-nowrap"
+            >
+              💵 Caja
             </button>
             {user?.rol === 'administrador' && (
               <>
