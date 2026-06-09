@@ -41,7 +41,8 @@ export default function OrderScreen() {
   const [phase,         setPhase]         = useState<Phase>('count')
   const [countInput,    setCountInput]    = useState('')
   const [gorditasTotal, setGorditasTotal] = useState(0)
-  // Confirmed items (locked combo items + previously confirmed gorditas)
+  // Locked gorditas pre-filled by a combo (e.g. frijoles in Combo Individual).
+  // After "Agregar al pedido" + payment, resetOrder() clears this — next session starts empty.
   const [items,         setItems]         = useState<OrderItem[]>(() => {
     try { return JSON.parse(localStorage.getItem(ORDER_KEY) ?? '{}').items ?? [] } catch { return [] }
   })
@@ -56,6 +57,8 @@ export default function OrderScreen() {
   const [masaFijaId,    setMasaFijaId]    = useState<number | null>(null)
   const [lockedItemIds,  setLockedItemIds]  = useState<Set<string>>(new Set())
   const [lockedDrinkIds, setLockedDrinkIds] = useState<Set<string>>(new Set())
+  // Tracks which phase triggered PaymentScreen (to return correctly on cancel)
+  const [paymentSource, setPaymentSource] = useState<Phase>('count')
   // Session tally: gorditas sold this shift, keyed by masa label
   const [soldByMasa,    setSoldByMasa]    = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem(ORDER_KEY) ?? '{}').soldByMasa ?? {} } catch { return {} }
@@ -128,8 +131,10 @@ export default function OrderScreen() {
   }
 
   // ── Derived ────────────────────────────────────────────────
-  // Include draft in progress bar and total display
-  const gorditasAsignadas = items.reduce((s, i) => s + i.cantidad, 0)
+  // Only count locked items from the CURRENT session + the active draft.
+  // Previously confirmed items (from earlier "Agregar al pedido" sessions) are
+  // already in the DB and must not bleed into this session's progress counter.
+  const gorditasAsignadas = items.filter(i => lockedItemIds.has(i.localId)).reduce((s, i) => s + i.cantidad, 0)
                           + draftItems.reduce((s, i) => s + i.cantidad, 0)
   const total             = items.reduce((s, i) => s + i.subtotal, 0)
                           + draftItems.reduce((s, i) => s + i.subtotal, 0)
@@ -162,37 +167,6 @@ export default function OrderScreen() {
       return [...prev, { ...item, localId: crypto.randomUUID() }]
     })
   }, [])
-
-  // Confirm guisados: merge draft into confirmed items
-  function handleConfirmGuisados() {
-    if (draftItems.length > 0) {
-      setItems(prev => {
-        let next = [...prev]
-        for (const draft of draftItems) {
-          const existing = next.find(
-            i => i.guisado_id === draft.guisado_id &&
-                 i.tipo_masa_id === draft.tipo_masa_id &&
-                 !lockedItemIds.has(i.localId)
-          )
-          if (existing) {
-            next = next.map(i =>
-              i.localId === existing.localId
-                ? { ...i, cantidad: i.cantidad + draft.cantidad, subtotal: i.subtotal + draft.subtotal }
-                : i
-            )
-          } else {
-            next = [...next, draft]
-          }
-        }
-        return next
-      })
-    }
-    setDraftItems([])
-    setPhase('count')
-    setCountInput('')
-    setGorditasTotal(0)
-    setMasaFijaId(null)
-  }
 
   // Cancel guisados: discard draft and undo combo pre-fills if applicable
   function handleCancelGuisados() {
@@ -329,12 +303,15 @@ export default function OrderScreen() {
   }
 
   // ── Payment ────────────────────────────────────────────────
+  // Combines locked combo items (items) + active draft (draftItems) into one order.
+  // After a successful payment, ALL local state is cleared — next session starts fresh.
   async function handleConfirmPayment(metodo: 'efectivo' | 'tarjeta') {
     setLoading(true)
     try {
+      const allItems = [...items, ...draftItems]
       const result = await api.crearOrden({
         metodo_pago: metodo,
-        items: items.map(i => ({
+        items: allItems.map(i => ({
           tipo_masa_id: i.tipo_masa_id,
           guisado_id:   i.guisado_id,
           cantidad:     i.cantidad,
@@ -347,7 +324,7 @@ export default function OrderScreen() {
       })
       setSoldByMasa(prev => {
         const next = { ...prev }
-        items.forEach(i => { next[i.masa_label] = (next[i.masa_label] ?? 0) + i.cantidad })
+        allItems.forEach(i => { next[i.masa_label] = (next[i.masa_label] ?? 0) + i.cantidad })
         return next
       })
       showToast(`✓ Orden #${result.numero_orden} — $${result.total} (${metodo})`, 'success')
@@ -391,11 +368,11 @@ export default function OrderScreen() {
           </div>
         )}
         <PaymentScreen
-          items={items}
+          items={[...items, ...draftItems]}
           drinkItems={drinkItems}
           total={total}
           onConfirm={handleConfirmPayment}
-          onCancel={() => setPhase('count')}
+          onCancel={() => setPhase(paymentSource)}
           loading={loading}
         />
       </>
@@ -413,10 +390,11 @@ export default function OrderScreen() {
       : undefined
 
   const cobrarAction = phase === 'guisados'
-    ? handleConfirmGuisados
+    // "Agregar al pedido" goes directly to PaymentScreen — no accumulation, one order per session.
+    ? () => { setPaymentSource('guisados'); setPhase('payment') }
     : phase === 'drinks' || phase === 'combos'
       ? () => setPhase('count')
-      : () => setPhase('payment')
+      : () => { setPaymentSource('count'); setPhase('payment') }
 
   return (
     <div className="h-screen flex flex-col bg-orange-50 overflow-hidden">
