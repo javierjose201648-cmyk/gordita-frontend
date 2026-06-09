@@ -93,11 +93,6 @@ export const api = {
     cerrar:  () => req<{ message: string }>('/api/resumen/cerrar', { method: 'POST' }),
   },
 
-  // Promociones
-  promos: {
-    getActivas: () => req<{ id: number; nombre: string; descripcion: string; precio_fijo: number }[]>('/api/promociones/activas'),
-  },
-
   // Orders
   crearOrden: (body: object) =>
     req<{ id: number; numero_orden: string; total: number }>('/api/ordenes', {
