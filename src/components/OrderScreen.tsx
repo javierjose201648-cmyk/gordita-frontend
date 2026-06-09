@@ -307,7 +307,7 @@ export default function OrderScreen() {
         setLockedDrinkIds(new Set([drinkId]))
       }
       if (frijoles) {
-        const precioMasa = Number(harina.precio_extra)
+        const precioMasa = Number(harina.precio)
         setItems([{
           localId: itemId,
           guisado_id: frijoles.id,

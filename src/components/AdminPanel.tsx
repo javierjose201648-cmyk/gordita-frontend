@@ -55,7 +55,7 @@ function InputField({ label, value, onChange, type = 'text', placeholder }: {
 }
 
 // ── Blank masa form ───────────────────────────────────────────
-const blankMasa = () => ({ nombre: '', precio_extra: '', disponible: true })
+const blankMasa = () => ({ nombre: '', precio: '', disponible: true })
 // ── Blank bebida form ─────────────────────────────────────────
 const blankBebida = () => ({ nombre: '', sabor: '', tamaño: '', precio: '', categoria_id: '' })
 
@@ -380,7 +380,7 @@ function MasasSection() {
   }
 
   function openEdit(m: TipoMasa) {
-    setForm({ nombre: m.nombre, precio_extra: String(m.precio_extra), disponible: m.disponible })
+    setForm({ nombre: m.nombre, precio: String(m.precio), disponible: m.disponible })
     setEditingId(m.id); setError('')
   }
 
@@ -388,14 +388,14 @@ function MasasSection() {
 
   async function handleSave() {
     if (!form.nombre.trim()) { setError('El nombre es requerido'); return }
-    const precio = parseFloat(form.precio_extra)
+    const precio = parseFloat(form.precio)
     if (isNaN(precio) || precio < 0) { setError('Precio inválido'); return }
     setSaving(true); setError('')
     try {
       if (editingId === -1) {
-        await api.admin.masas.create({ nombre: form.nombre.trim(), precio_extra: precio, disponible: form.disponible })
+        await api.admin.masas.create({ nombre: form.nombre.trim(), precio: precio, disponible: form.disponible })
       } else if (editingId !== null) {
-        await api.admin.masas.update(editingId, { nombre: form.nombre.trim(), precio_extra: precio, disponible: form.disponible })
+        await api.admin.masas.update(editingId, { nombre: form.nombre.trim(), precio: precio, disponible: form.disponible })
       }
       closeForm(); await load()
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Error al guardar') }
@@ -434,8 +434,8 @@ function MasasSection() {
             <div className="flex items-center border-2 border-gray-200 focus-within:border-orange-400
                             rounded-xl overflow-hidden transition-colors">
               <span className="px-3 text-gray-500 font-bold text-sm bg-gray-50 border-r-2 border-gray-200">$</span>
-              <input type="number" min="0" step="1" value={form.precio_extra}
-                onChange={e => setForm(f => ({ ...f, precio_extra: e.target.value }))}
+              <input type="number" min="0" step="1" value={form.precio}
+                onChange={e => setForm(f => ({ ...f, precio: e.target.value }))}
                 placeholder="0"
                 className="px-3 py-2 text-sm font-bold flex-1 focus:outline-none" />
             </div>
@@ -468,7 +468,7 @@ function MasasSection() {
                           ${m.disponible ? 'bg-white border-gray-100' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-gray-800 text-sm leading-tight">{m.nombre}</p>
-                <p className="text-orange-600 font-black text-base">${m.precio_extra} c/u</p>
+                <p className="text-orange-600 font-black text-base">${m.precio} c/u</p>
               </div>
               <div className="flex gap-2 shrink-0">
                 <ActionButton label={m.disponible ? 'Ocultar' : 'Mostrar'}

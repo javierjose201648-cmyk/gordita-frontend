@@ -15,7 +15,7 @@ export interface Guisado {
 export interface TipoMasa {
   id: number;
   nombre: string;
-  precio_extra: number;   // this IS the gordita price for this masa
+  precio: number;    // precio total de la gordita con esta masa
   disponible: boolean;
 }
 

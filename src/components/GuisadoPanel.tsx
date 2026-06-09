@@ -39,7 +39,7 @@ export default function GuisadoPanel({
 
   function handleGuisado(g: Guisado) {
     const cantidad        = Math.max(1, parseInt(miniValue) || 1)
-    const precio_unitario = selectedMasa?.precio_extra ?? 20
+    const precio_unitario = selectedMasa?.precio ?? 20
     const label           = selectedMasa ? masaLabel(selectedMasa.nombre) : 'Harina'
 
     onAdd({
@@ -112,7 +112,7 @@ export default function GuisadoPanel({
                 }`}
               >
                 <div className="text-sm">{masaLabel(m.nombre)}</div>
-                <div className="text-xs opacity-70">${m.precio_extra} c/u</div>
+                <div className="text-xs opacity-70">${m.precio} c/u</div>
               </button>
             ))}
           </div>
