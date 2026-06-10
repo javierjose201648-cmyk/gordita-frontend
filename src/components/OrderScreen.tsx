@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import type { Guisado, TipoMasa, Refresco, OrderItem, DrinkItem } from '../types'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
-import NumericKeypad from './NumericKeypad'
 import GuisadoPanel from './GuisadoPanel'
 import DrinkPanel from './DrinkPanel'
 import OrderTable from './OrderTable'
@@ -14,7 +13,7 @@ import RefriPanel   from './RefriPanel'
 import ResumenPanel from './ResumenPanel'
 import ComboPanel   from './ComboPanel'
 
-type Phase = 'count' | 'guisados' | 'drinks' | 'combos' | 'payment'
+type Phase = 'guisados' | 'drinks' | 'combos' | 'payment'
 
 interface Toast { msg: string; type: 'success' | 'error' }
 
@@ -38,9 +37,7 @@ export default function OrderScreen() {
   const [refrescos, setRefrescos] = useState<Refresco[]>([])
 
   // ── Order state ────────────────────────────────────────────
-  const [phase,         setPhase]         = useState<Phase>('count')
-  const [countInput,    setCountInput]    = useState('')
-  const [gorditasTotal, setGorditasTotal] = useState(0)
+  const [phase, setPhase] = useState<Phase>('guisados')
   // Single item list — all confirmed gorditas (no draft/confirmed split)
   const [items,         setItems]         = useState<OrderItem[]>(() => {
     try { return JSON.parse(localStorage.getItem(ORDER_KEY) ?? '{}').items ?? [] } catch { return [] }
@@ -54,13 +51,11 @@ export default function OrderScreen() {
   // Combo tracking: target = gorditas needed (10 or 3), base = gordita count before combo started
   const [comboTarget,   setComboTarget]   = useState<number | null>(null)
   const [comboBase,     setComboBase]     = useState(0)
-  // Where drinks/combos/payment panels should return to on cancel/confirm
-  const [panelReturn,   setPanelReturn]   = useState<'count' | 'guisados'>('count')
-  // Session tally: gorditas sold this shift, keyed by masa label
+  // Session tally — used by ResumenPanel; not displayed in this screen
   const [soldByMasa,    setSoldByMasa]    = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem(ORDER_KEY) ?? '{}').soldByMasa ?? {} } catch { return {} }
   })
-  // Orders committed to the DB during this shift (shown in left panel)
+  // Orders committed to the DB during this shift (shown in right panel)
   const [turnoOrders, setTurnoOrders] = useState<TurnoOrder[]>([])
 
   // ── UI ─────────────────────────────────────────────────────
@@ -137,13 +132,6 @@ export default function OrderScreen() {
               + drinkItems.reduce((s, i) => s + i.subtotal, 0)
 
   // ── Gordita handlers ───────────────────────────────────────
-  function handleContinuar() {
-    const n = parseInt(countInput) || 0
-    if (n < 1) return
-    setGorditasTotal(n)
-    setPhase('guisados')
-  }
-
   // Adds directly to items. Merges with existing non-locked entries of same guisado+masa.
   const handleAddItem = useCallback((item: Omit<OrderItem, 'localId'>) => {
     setItems(prev => {
@@ -163,20 +151,15 @@ export default function OrderScreen() {
     })
   }, [lockedItemIds])
 
-  // Back button from guisados: cancels an active combo (removes locked items/drinks),
-  // then returns to count. In normal mode just returns to count, preserving items.
-  function handleBackFromGuisados() {
-    if (comboTarget !== null) {
-      setItems(prev => prev.filter(i => !lockedItemIds.has(i.localId)))
-      setDrinkItems(prev => prev.filter(d => !lockedDrinkIds.has(d.localId)))
-      setLockedItemIds(new Set())
-      setLockedDrinkIds(new Set())
-      setComboTarget(null)
-    }
+  // Cancels an active combo: removes locked items/drinks and resets combo state.
+  // Stays in guisados — guisados is the home screen now.
+  function handleCancelCombo() {
+    setItems(prev => prev.filter(i => !lockedItemIds.has(i.localId)))
+    setDrinkItems(prev => prev.filter(d => !lockedDrinkIds.has(d.localId)))
+    setLockedItemIds(new Set())
+    setLockedDrinkIds(new Set())
+    setComboTarget(null)
     setMasaFijaId(null)
-    setPhase('count')
-    setCountInput('')
-    setGorditasTotal(0)
   }
 
   // Called when a combo is complete and the employee presses "Agregar combo".
@@ -186,7 +169,6 @@ export default function OrderScreen() {
     setLockedDrinkIds(new Set())
     setComboTarget(null)
     setMasaFijaId(null)
-    // Stay in guisados — employee can continue adding more gorditas or tap Cobrar
   }
 
   function handleDeleteItem(localId: string) {
@@ -222,9 +204,7 @@ export default function OrderScreen() {
   function resetOrder() {
     setItems([])
     setDrinkItems([])
-    setPhase('count')
-    setCountInput('')
-    setGorditasTotal(0)
+    setPhase('guisados')
     setMasaFijaId(null)
     setLockedItemIds(new Set())
     setLockedDrinkIds(new Set())
@@ -353,7 +333,7 @@ export default function OrderScreen() {
     />
   )
 
-  // Payment overlay — onCancel returns to wherever Cobrar was pressed from
+  // Payment overlay — onCancel returns to guisados
   if (phase === 'payment') {
     return (
       <>
@@ -371,7 +351,7 @@ export default function OrderScreen() {
           drinkItems={drinkItems}
           total={total}
           onConfirm={handleConfirmPayment}
-          onCancel={() => setPhase(panelReturn)}
+          onCancel={() => setPhase('guisados')}
           loading={loading}
         />
       </>
@@ -387,19 +367,17 @@ export default function OrderScreen() {
           : 'Agregar combo'
         : undefined  // normal guisados → shows default "Cobrar $X"
       : phase === 'drinks'
-        ? panelReturn === 'guisados' ? 'Agregar refrescos' : 'Agregar'
+        ? 'Agregar refrescos'
         : phase === 'combos'
           ? 'Agregar'
-          : undefined  // count → shows default "Cobrar $X"
+          : undefined
 
   const cobrarAction =
     phase === 'guisados'
       ? comboTarget !== null
         ? handleFinishCombo
-        : () => { setPanelReturn('guisados'); setPhase('payment') }
-      : phase === 'drinks' || phase === 'combos'
-        ? () => setPhase(panelReturn)
-        : () => { setPanelReturn('count'); setPhase('payment') }
+        : () => setPhase('payment')
+      : () => setPhase('guisados')  // drinks + combos both return to guisados
 
   return (
     <div className="h-screen flex flex-col bg-orange-50 overflow-hidden">
@@ -479,17 +457,66 @@ export default function OrderScreen() {
       {/* Main */}
       <div className="flex-1 flex flex-col md:flex-row gap-3 p-3 min-h-0">
 
-        {/* ── PANEL DE ÓRDENES DEL TURNO (solo visible en count) ── */}
-        {phase === 'count' && (
-          <div className="w-full md:w-52 lg:w-64 shrink-0 bg-white rounded-2xl shadow-md
-                          p-4 flex flex-col min-h-0 max-h-44 md:max-h-full">
+        {/* ── PANEL CENTRAL ── */}
+        <div className="flex-1 bg-white rounded-2xl shadow-md p-4 flex flex-col min-h-0 overflow-y-auto">
+
+          {phase === 'guisados' && (
+            <GuisadoPanel
+              guisados={guisados}
+              tiposMasa={tiposMasa}
+              masaFijaId={masaFijaId ?? undefined}
+              comboMode={comboTarget !== null}
+              onAdd={handleAddItem}
+              onCancelCombo={handleCancelCombo}
+              onRefrescos={() => setPhase('drinks')}
+              onCombos={() => setPhase('combos')}
+            />
+          )}
+
+          {phase === 'drinks' && (
+            <DrinkPanel
+              refrescos={refrescos}
+              onAdd={handleAddDrink}
+              onBack={() => setPhase('guisados')}
+            />
+          )}
+
+          {phase === 'combos' && (
+            <ComboPanel
+              onSelectCombo={handleSelectCombo}
+              onBack={() => setPhase('guisados')}
+            />
+          )}
+        </div>
+
+        {/* ── RIGHT PANEL — Orden actual + Órdenes del turno ── */}
+        <div className="w-full md:w-52 lg:w-64 shrink-0 flex flex-col gap-2 min-h-[260px] md:min-h-0">
+
+          {/* OrderTable — ocupa 2/3 del alto */}
+          <div className="flex-[2] min-h-0">
+            <OrderTable
+              items={items}
+              drinkItems={drinkItems}
+              onDelete={handleDeleteItem}
+              onDeleteDrink={handleDeleteDrink}
+              onClear={handleClear}
+              lockedItemIds={phase === 'guisados' ? lockedItemIds : undefined}
+              lockedDrinkIds={phase === 'guisados' ? lockedDrinkIds : undefined}
+              cobrarDisabled={comboIncompleto}
+              onCobrar={cobrarAction}
+              cobrarLabel={cobrarLabel}
+            />
+          </div>
+
+          {/* Órdenes del turno — ocupa 1/3 del alto */}
+          <div className="flex-1 bg-white rounded-2xl shadow-md p-3 flex flex-col min-h-0 overflow-hidden">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 shrink-0">
               Órdenes del turno
             </p>
             <div className="flex-1 overflow-y-auto space-y-2 min-h-0 pr-0.5">
               {turnoOrders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full
-                                text-gray-300 select-none py-6">
+                                text-gray-300 select-none py-4">
                   <div className="text-3xl mb-1">🧾</div>
                   <p className="text-xs">Sin órdenes aún</p>
                 </div>
@@ -529,182 +556,6 @@ export default function OrderScreen() {
               )}
             </div>
           </div>
-        )}
-
-        {/* ── PANEL CENTRAL ── */}
-        <div className="flex-1 bg-white rounded-2xl shadow-md p-4 flex flex-col min-h-0 overflow-y-auto">
-
-          {phase === 'count' && (
-            <div className="flex flex-col gap-3 h-full">
-
-              {Object.keys(soldByMasa).length > 0 ? (
-                <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2
-                                flex items-center justify-center gap-3 flex-wrap">
-                  <span className="text-xs font-semibold text-orange-500 uppercase tracking-wide">
-                    Vendidas hoy
-                  </span>
-                  {Object.entries(soldByMasa).map(([masa, qty]) => (
-                    <span key={masa}
-                      className="text-sm font-black text-orange-700 bg-white border border-orange-200
-                                 rounded-lg px-2.5 py-0.5">
-                      {masa}: {qty}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center text-xs text-gray-300 font-medium pt-1">
-                  Sin gorditas registradas aún
-                </div>
-              )}
-
-              <h2 className="text-center text-gray-600 font-semibold text-base sm:text-lg">
-                ¿Cuántas gorditas?
-              </h2>
-
-              <NumericKeypad
-                value={countInput}
-                onChange={setCountInput}
-                onConfirm={handleContinuar}
-                size="lg"
-                maxDigits={2}
-              />
-
-              <button
-                onClick={handleContinuar}
-                disabled={!countInput || countInput === '0'}
-                className="w-full bg-orange-500 hover:bg-orange-600 active:bg-orange-700
-                           disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed
-                           text-white font-black py-3 sm:py-4 rounded-2xl text-xl sm:text-2xl
-                           transition-colors shadow-lg shadow-orange-200 disabled:shadow-none"
-              >
-                {countInput && countInput !== '0'
-                  ? `${countInput} gordita${parseInt(countInput) !== 1 ? 's' : ''} →`
-                  : 'Continuar →'}
-              </button>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => { setPanelReturn('count'); setPhase('drinks') }}
-                  className="bg-white hover:bg-blue-50 active:bg-blue-100
-                             border-2 border-blue-200 hover:border-blue-400
-                             text-blue-600 font-bold py-3 rounded-2xl text-sm
-                             transition-colors flex items-center justify-center gap-1.5"
-                >
-                  <span>🥤</span>
-                  <span>Refrescos</span>
-                </button>
-                <button
-                  onClick={() => { setPanelReturn('count'); setPhase('combos') }}
-                  className="bg-white hover:bg-purple-50 active:bg-purple-100
-                             border-2 border-purple-200 hover:border-purple-400
-                             text-purple-600 font-bold py-3 rounded-2xl text-sm
-                             transition-colors flex items-center justify-center gap-1.5"
-                >
-                  <span>🎁</span>
-                  <span>Combos</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {phase === 'guisados' && (
-            <GuisadoPanel
-              guisados={guisados}
-              tiposMasa={tiposMasa}
-              masaFijaId={masaFijaId ?? undefined}
-              comboMode={comboTarget !== null}
-              onAdd={handleAddItem}
-              onBack={handleBackFromGuisados}
-              onRefrescos={() => { setPanelReturn('guisados'); setPhase('drinks') }}
-              onCombos={() => { setPanelReturn('guisados'); setPhase('combos') }}
-            />
-          )}
-
-          {phase === 'drinks' && (
-            <DrinkPanel
-              refrescos={refrescos}
-              onAdd={handleAddDrink}
-              onBack={() => setPhase(panelReturn)}
-            />
-          )}
-
-          {phase === 'combos' && (
-            <ComboPanel
-              onSelectCombo={handleSelectCombo}
-              onBack={() => setPhase(panelReturn)}
-            />
-          )}
-        </div>
-
-        {/* ── RIGHT PANEL — Orden actual + Órdenes del turno (en guisados) ── */}
-        <div className="w-full md:w-52 lg:w-64 shrink-0 flex flex-col gap-2 min-h-[260px] md:min-h-0">
-
-          {/* OrderTable — ocupa 2/3 cuando el panel de turno está visible */}
-          <div className={`min-h-0 ${phase === 'guisados' ? 'flex-[2]' : 'flex-1'}`}>
-            <OrderTable
-              items={items}
-              drinkItems={drinkItems}
-              onDelete={handleDeleteItem}
-              onDeleteDrink={handleDeleteDrink}
-              onClear={handleClear}
-              lockedItemIds={phase === 'guisados' ? lockedItemIds : undefined}
-              lockedDrinkIds={phase === 'guisados' ? lockedDrinkIds : undefined}
-              cobrarDisabled={comboIncompleto}
-              onCobrar={cobrarAction}
-              cobrarLabel={cobrarLabel}
-            />
-          </div>
-
-          {/* Órdenes del turno — solo visible en guisados, ocupa 1/3 */}
-          {phase === 'guisados' && (
-            <div className="flex-1 bg-white rounded-2xl shadow-md p-3 flex flex-col min-h-0 overflow-hidden">
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 shrink-0">
-                Órdenes del turno
-              </p>
-              <div className="flex-1 overflow-y-auto space-y-2 min-h-0 pr-0.5">
-                {turnoOrders.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full
-                                  text-gray-300 select-none py-4">
-                    <div className="text-3xl mb-1">🧾</div>
-                    <p className="text-xs">Sin órdenes aún</p>
-                  </div>
-                ) : (
-                  [...turnoOrders].reverse().map(o => {
-                    const hora = new Date(o.creado_en).toLocaleTimeString('es-MX', {
-                      hour: '2-digit', minute: '2-digit', hour12: false,
-                    })
-                    return (
-                      <div key={o.id}
-                        className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-black text-sm text-gray-700">#{o.numero_orden}</span>
-                          <span className="text-xs text-gray-400 font-medium">{hora}</span>
-                        </div>
-                        <div className="space-y-0.5">
-                          {o.gorditas.map((g, i) => (
-                            <p key={i} className="text-xs text-gray-600 leading-tight">
-                              {g.cantidad}× <span className="font-medium">{g.guisado}</span>
-                              <span className="text-gray-400"> · {g.masa}</span>
-                            </p>
-                          ))}
-                          {o.bebidas?.map((b, i) => (
-                            <p key={`b${i}`} className="leading-tight"
-                               style={{ fontSize: '10px' }}>
-                              <span className="text-blue-400">{b.cantidad}× </span>
-                              <span className="text-gray-500">{b.tamaño}</span>
-                            </p>
-                          ))}
-                        </div>
-                        <p className="text-xs font-black text-orange-500 mt-1.5">
-                          ${Number(o.total).toFixed(0)}
-                        </p>
-                      </div>
-                    )
-                  })
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

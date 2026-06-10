@@ -3,14 +3,14 @@ import type { Guisado, TipoMasa, OrderItem } from '../types'
 import NumericKeypad from './NumericKeypad'
 
 interface Props {
-  guisados:    Guisado[]
-  tiposMasa:   TipoMasa[]
-  masaFijaId?: number   // if set, locks masa selection (used by combos)
-  comboMode:   boolean  // true while completing a combo
-  onAdd:       (item: Omit<OrderItem, 'localId'>) => void
-  onBack:      () => void
-  onRefrescos: () => void
-  onCombos:    () => void
+  guisados:       Guisado[]
+  tiposMasa:      TipoMasa[]
+  masaFijaId?:    number   // if set, locks masa selection (used by combos)
+  comboMode:      boolean  // true while completing a combo
+  onAdd:          (item: Omit<OrderItem, 'localId'>) => void
+  onCancelCombo:  () => void
+  onRefrescos:    () => void
+  onCombos:       () => void
 }
 
 /** Maps DB masa nombre → display label */
@@ -26,7 +26,7 @@ export default function GuisadoPanel({
   masaFijaId,
   comboMode,
   onAdd,
-  onBack,
+  onCancelCombo,
   onRefrescos,
   onCombos,
 }: Props) {
@@ -153,14 +153,16 @@ export default function GuisadoPanel({
         />
       </div>
 
-      {/* Back */}
-      <button
-        onClick={onBack}
-        className="text-orange-600 hover:text-orange-800 font-medium text-sm
-                   py-2 text-center transition-colors"
-      >
-        ← Volver al inicio
-      </button>
+      {/* Cancelar combo — solo visible en modo combo */}
+      {comboMode && (
+        <button
+          onClick={onCancelCombo}
+          className="text-red-500 hover:text-red-700 font-semibold text-sm
+                     py-2 text-center transition-colors"
+        >
+          ✕ Cancelar combo
+        </button>
+      )}
     </div>
   )
 }
