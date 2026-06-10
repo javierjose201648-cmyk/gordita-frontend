@@ -636,20 +636,75 @@ export default function OrderScreen() {
           )}
         </div>
 
-        {/* ── RIGHT PANEL — Orden actual ── */}
-        <div className="w-full md:w-52 lg:w-64 shrink-0 min-h-[260px] md:min-h-0">
-          <OrderTable
-            items={items}
-            drinkItems={drinkItems}
-            onDelete={handleDeleteItem}
-            onDeleteDrink={handleDeleteDrink}
-            onClear={handleClear}
-            lockedItemIds={phase === 'guisados' ? lockedItemIds : undefined}
-            lockedDrinkIds={phase === 'guisados' ? lockedDrinkIds : undefined}
-            cobrarDisabled={comboIncompleto}
-            onCobrar={cobrarAction}
-            cobrarLabel={cobrarLabel}
-          />
+        {/* ── RIGHT PANEL — Orden actual + Órdenes del turno (en guisados) ── */}
+        <div className="w-full md:w-52 lg:w-64 shrink-0 flex flex-col gap-2 min-h-[260px] md:min-h-0">
+
+          {/* OrderTable — ocupa 2/3 cuando el panel de turno está visible */}
+          <div className={`min-h-0 ${phase === 'guisados' ? 'flex-[2]' : 'flex-1'}`}>
+            <OrderTable
+              items={items}
+              drinkItems={drinkItems}
+              onDelete={handleDeleteItem}
+              onDeleteDrink={handleDeleteDrink}
+              onClear={handleClear}
+              lockedItemIds={phase === 'guisados' ? lockedItemIds : undefined}
+              lockedDrinkIds={phase === 'guisados' ? lockedDrinkIds : undefined}
+              cobrarDisabled={comboIncompleto}
+              onCobrar={cobrarAction}
+              cobrarLabel={cobrarLabel}
+            />
+          </div>
+
+          {/* Órdenes del turno — solo visible en guisados, ocupa 1/3 */}
+          {phase === 'guisados' && (
+            <div className="flex-1 bg-white rounded-2xl shadow-md p-3 flex flex-col min-h-0 overflow-hidden">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2 shrink-0">
+                Órdenes del turno
+              </p>
+              <div className="flex-1 overflow-y-auto space-y-2 min-h-0 pr-0.5">
+                {turnoOrders.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full
+                                  text-gray-300 select-none py-4">
+                    <div className="text-3xl mb-1">🧾</div>
+                    <p className="text-xs">Sin órdenes aún</p>
+                  </div>
+                ) : (
+                  [...turnoOrders].reverse().map(o => {
+                    const hora = new Date(o.creado_en).toLocaleTimeString('es-MX', {
+                      hour: '2-digit', minute: '2-digit', hour12: false,
+                    })
+                    return (
+                      <div key={o.id}
+                        className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-black text-sm text-gray-700">#{o.numero_orden}</span>
+                          <span className="text-xs text-gray-400 font-medium">{hora}</span>
+                        </div>
+                        <div className="space-y-0.5">
+                          {o.gorditas.map((g, i) => (
+                            <p key={i} className="text-xs text-gray-600 leading-tight">
+                              {g.cantidad}× <span className="font-medium">{g.guisado}</span>
+                              <span className="text-gray-400"> · {g.masa}</span>
+                            </p>
+                          ))}
+                          {o.bebidas?.map((b, i) => (
+                            <p key={`b${i}`} className="leading-tight"
+                               style={{ fontSize: '10px' }}>
+                              <span className="text-blue-400">{b.cantidad}× </span>
+                              <span className="text-gray-500">{b.tamaño}</span>
+                            </p>
+                          ))}
+                        </div>
+                        <p className="text-xs font-black text-orange-500 mt-1.5">
+                          ${Number(o.total).toFixed(0)}
+                        </p>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
