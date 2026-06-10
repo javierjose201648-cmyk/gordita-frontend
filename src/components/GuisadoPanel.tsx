@@ -3,13 +3,14 @@ import type { Guisado, TipoMasa, OrderItem } from '../types'
 import NumericKeypad from './NumericKeypad'
 
 interface Props {
-  guisados:           Guisado[]
-  tiposMasa:          TipoMasa[]
-  gorditas_total:     number
-  gorditas_asignadas: number
-  masaFijaId?:        number   // if set, locks masa selection (used by combos)
-  onAdd:  (item: Omit<OrderItem, 'localId'>) => void
-  onBack: () => void
+  guisados:    Guisado[]
+  tiposMasa:   TipoMasa[]
+  masaFijaId?: number   // if set, locks masa selection (used by combos)
+  comboMode:   boolean  // true while completing a combo
+  onAdd:       (item: Omit<OrderItem, 'localId'>) => void
+  onBack:      () => void
+  onRefrescos: () => void
+  onCombos:    () => void
 }
 
 /** Maps DB masa nombre → display label */
@@ -22,11 +23,12 @@ function masaLabel(nombre: string) {
 export default function GuisadoPanel({
   guisados,
   tiposMasa,
-  gorditas_total,
-  gorditas_asignadas,
   masaFijaId,
+  comboMode,
   onAdd,
   onBack,
+  onRefrescos,
+  onCombos,
 }: Props) {
   const masas = tiposMasa.filter(m => m.disponible)
 
@@ -55,36 +57,32 @@ export default function GuisadoPanel({
     setMiniValue('') // reset after every add
   }
 
-  const pendientes = gorditas_total - gorditas_asignadas
-
   return (
     <div className="flex flex-col gap-2.5 h-full overflow-y-auto">
 
-      {/* Progress bar */}
-      {gorditas_total > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-2">
-          <div className="flex items-center justify-between text-sm mb-1">
-            <span className="text-orange-700 font-medium">Gorditas asignadas</span>
-            <span className="font-bold text-orange-600">
-              {gorditas_asignadas}/{gorditas_total}
-            </span>
-          </div>
-          <div className="h-2 bg-orange-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-orange-500 rounded-full transition-all"
-              style={{ width: `${Math.min(100, (gorditas_asignadas / gorditas_total) * 100)}%` }}
-            />
-          </div>
-          {pendientes > 0 && (
-            <p className="text-xs text-orange-500 mt-1">
-              {pendientes} gordita{pendientes !== 1 ? 's' : ''} pendiente{pendientes !== 1 ? 's' : ''}
-            </p>
-          )}
-          {gorditas_asignadas > gorditas_total && (
-            <p className="text-xs text-amber-600 mt-1 font-medium">
-              ⚠️ Se agregaron más gorditas de las indicadas
-            </p>
-          )}
+      {/* Refrescos / Combos quick-access — hidden while in combo mode */}
+      {!comboMode && (
+        <div className="grid grid-cols-2 gap-2 shrink-0">
+          <button
+            onClick={onRefrescos}
+            className="bg-white hover:bg-blue-50 active:bg-blue-100
+                       border-2 border-blue-200 hover:border-blue-400
+                       text-blue-600 font-bold py-2.5 rounded-2xl text-sm
+                       transition-colors flex items-center justify-center gap-1.5"
+          >
+            <span>🥤</span>
+            <span>Refrescos</span>
+          </button>
+          <button
+            onClick={onCombos}
+            className="bg-white hover:bg-purple-50 active:bg-purple-100
+                       border-2 border-purple-200 hover:border-purple-400
+                       text-purple-600 font-bold py-2.5 rounded-2xl text-sm
+                       transition-colors flex items-center justify-center gap-1.5"
+          >
+            <span>🎁</span>
+            <span>Combos</span>
+          </button>
         </div>
       )}
 
@@ -119,7 +117,7 @@ export default function GuisadoPanel({
         </div>
       )}
 
-      {/* Guisado grid — 3 columns, compact buttons */}
+      {/* Guisado grid — 5 columns */}
       <div>
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
           Selecciona guisado
