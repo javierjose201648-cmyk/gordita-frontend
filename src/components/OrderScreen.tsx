@@ -12,6 +12,7 @@ import CajaPanel    from './CajaPanel'
 import RefriPanel   from './RefriPanel'
 import ResumenPanel from './ResumenPanel'
 import ComboPanel   from './ComboPanel'
+import OrdenesPanel from './OrdenesPanel'
 
 type Phase = 'guisados' | 'drinks' | 'combos' | 'payment'
 
@@ -61,20 +62,22 @@ export default function OrderScreen() {
   // ── UI ─────────────────────────────────────────────────────
   const [loading,    setLoading]    = useState(false)
   const [toast,      setToast]      = useState<Toast | null>(null)
-  const [showAdmin,   setShowAdmin]   = useState(() => window.location.hash === '#admin')
+  const [showAdmin,    setShowAdmin]    = useState(() => window.location.hash === '#admin')
   const [showGastos,  setShowGastos]  = useState(() => window.location.hash === '#gastos')
   const [showCaja,    setShowCaja]    = useState(() => window.location.hash === '#caja')
   const [showRefri,   setShowRefri]   = useState(() => window.location.hash === '#refri')
   const [showResumen, setShowResumen] = useState(() => window.location.hash === '#resumen')
+  const [showOrdenes, setShowOrdenes] = useState(() => window.location.hash === '#ordenes')
 
   useEffect(() => {
-    if (showAdmin)        window.history.replaceState(null, '', '#admin')
+    if (showAdmin)         window.history.replaceState(null, '', '#admin')
     else if (showGastos)  window.history.replaceState(null, '', '#gastos')
     else if (showCaja)    window.history.replaceState(null, '', '#caja')
     else if (showRefri)   window.history.replaceState(null, '', '#refri')
     else if (showResumen) window.history.replaceState(null, '', '#resumen')
+    else if (showOrdenes) window.history.replaceState(null, '', '#ordenes')
     else                  window.history.replaceState(null, '', window.location.pathname)
-  }, [showAdmin, showGastos, showCaja, showRefri, showResumen])
+  }, [showAdmin, showGastos, showCaja, showRefri, showResumen, showOrdenes])
 
   useEffect(() => {
     const onHashChange = () => {
@@ -83,6 +86,7 @@ export default function OrderScreen() {
       setShowCaja(window.location.hash === '#caja')
       setShowRefri(window.location.hash === '#refri')
       setShowResumen(window.location.hash === '#resumen')
+      setShowOrdenes(window.location.hash === '#ordenes')
     }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
@@ -317,6 +321,12 @@ export default function OrderScreen() {
   }
 
   // ── Panel overlays ─────────────────────────────────────────
+  if (showOrdenes) return (
+    <OrdenesPanel
+      onClose={() => setShowOrdenes(false)}
+      onChanged={fetchTurnoOrders}
+    />
+  )
   if (showAdmin)   return <AdminPanel   onClose={() => setShowAdmin(false)} />
   if (showGastos)  return <GastosPanel  onClose={() => setShowGastos(false)} />
   if (showCaja)    return <CajaPanel    onClose={() => setShowCaja(false)} />
@@ -417,6 +427,13 @@ export default function OrderScreen() {
             </button>
             {user?.rol === 'administrador' && (
               <>
+                <button
+                  onClick={() => setShowOrdenes(true)}
+                  className="bg-orange-700 hover:bg-orange-800 active:bg-orange-900
+                             text-white text-sm px-3 py-1.5 rounded-xl transition-colors whitespace-nowrap"
+                >
+                  📋 Órdenes
+                </button>
                 <button
                   onClick={() => setShowResumen(true)}
                   className="bg-orange-700 hover:bg-orange-800 active:bg-orange-900

@@ -120,6 +120,47 @@ export const api = {
       gorditas: { guisado: string; masa: string; cantidad: number }[];
       bebidas:  { nombre: string; tamaño: string; cantidad: number }[];
     }[]>('/api/ordenes/turno'),
+
+    getById: (id: number) => req<{
+      id: number;
+      numero_orden: string;
+      total: number;
+      creado_en: string;
+      items: {
+        id: number;
+        guisado_id: number;
+        guisado_nombre: string;
+        tipo_masa_id: number;
+        tipo_masa_nombre: string;
+        cantidad: number;
+        precio_unitario: number;
+        subtotal: number;
+      }[];
+      refrescos: {
+        id: number;
+        refresco_id: number;
+        refresco_nombre: string;
+        sabor: string;
+        tamaño: string;
+        cantidad: number;
+        precio_unitario: number;
+        subtotal: number;
+      }[];
+    }>(`/api/ordenes/${id}`),
+
+    update: (
+      id: number,
+      body: {
+        items:     { id: number; cantidad: number }[];
+        refrescos: { id: number; cantidad: number }[];
+      }
+    ) => req<{ id: number; total: number }>(`/api/ordenes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
+
+    delete: (id: number) =>
+      req<{ message: string }>(`/api/ordenes/${id}`, { method: 'DELETE' }),
   },
 
   // ── Admin: Usuarios ──────────────────────────────────────
