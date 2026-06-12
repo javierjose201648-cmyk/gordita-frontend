@@ -84,11 +84,11 @@ export default function OrdenesPanel({ onClose, onChanged }: Props) {
   const editTotal = editOrder
     ? editOrder.items.reduce((s, i) => {
         const qty = editState.items[i.id] ?? i.cantidad
-        return s + i.precio_unitario * qty
+        return s + Number(i.precio_unitario) * qty
       }, 0) +
       editOrder.refrescos.reduce((s, r) => {
         const qty = editState.refrescos[r.id] ?? r.cantidad
-        return s + r.precio_unitario * qty
+        return s + Number(r.precio_unitario) * qty
       }, 0)
     : 0
 
@@ -192,7 +192,7 @@ export default function OrdenesPanel({ onClose, onChanged }: Props) {
                           <p className="font-semibold text-gray-800 text-sm truncate">
                             {item.guisado_nombre}
                           </p>
-                          <p className="text-xs text-gray-500">{item.tipo_masa_nombre} · ${item.precio_unitario} c/u</p>
+                          <p className="text-xs text-gray-500">{item.tipo_masa_nombre} · ${Number(item.precio_unitario)} c/u</p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <button
@@ -253,7 +253,7 @@ export default function OrdenesPanel({ onClose, onChanged }: Props) {
                             {ref.refresco_nombre}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {ref.sabor} · {ref.tamaño} · ${ref.precio_unitario} c/u
+                            {ref.sabor} · {ref.tamaño} · ${Number(ref.precio_unitario)} c/u
                           </p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -321,7 +321,7 @@ export default function OrdenesPanel({ onClose, onChanged }: Props) {
                     #{order.numero_orden}
                   </span>
                   <span className="font-bold text-gray-700 text-sm">
-                    ${order.total.toFixed(2)}
+                    ${Number(order.total).toFixed(2)}
                   </span>
                 </div>
 
