@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Guisado, TipoMasa, OrderItem } from '../types'
 import NumericKeypad from './NumericKeypad'
 
@@ -32,10 +32,18 @@ export default function GuisadoPanel({
 }: Props) {
   const masas = tiposMasa.filter(m => m.disponible)
 
-  // Default to Harina (the most common) — find it by label, fall back to first
-  const defaultMasaId = masaFijaId ?? masas.find(m => masaLabel(m.nombre) === 'Harina')?.id ?? masas[0]?.id ?? 1
-  const [masaId,    setMasaId]    = useState<number>(defaultMasaId)
+  const [masaId,    setMasaId]    = useState<number>(1)
   const [miniValue, setMiniValue] = useState('')
+
+  // useState runs once on mount — tiposMasa is empty at that point (fetch in progress).
+  // This effect fires when masas first become available and sets Harina as default.
+  const initialized = useRef(false)
+  useEffect(() => {
+    if (masaFijaId || initialized.current || masas.length === 0) return
+    initialized.current = true
+    const harina = masas.find(m => masaLabel(m.nombre) === 'Harina')
+    setMasaId(harina?.id ?? masas[0].id)
+  }, [masas.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedMasa = masas.find(m => m.id === masaId) ?? masas[0]
 

@@ -52,6 +52,9 @@ export default function OrderScreen() {
   // Combo tracking: target = gorditas needed (10 or 3), base = gordita count before combo started
   const [comboTarget,   setComboTarget]   = useState<number | null>(null)
   const [comboBase,     setComboBase]     = useState(0)
+  // Snapshot of items/drinks taken just before combo starts — restored on cancel
+  const [comboSnapshotItems,  setComboSnapshotItems]  = useState<OrderItem[] | null>(null)
+  const [comboSnapshotDrinks, setComboSnapshotDrinks] = useState<DrinkItem[] | null>(null)
   // Session tally — used by ResumenPanel; not displayed in this screen
   const [soldByMasa,    setSoldByMasa]    = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem(ORDER_KEY) ?? '{}').soldByMasa ?? {} } catch { return {} }
@@ -158,12 +161,16 @@ export default function OrderScreen() {
   // Cancels an active combo: removes locked items/drinks and resets combo state.
   // Stays in guisados — guisados is the home screen now.
   function handleCancelCombo() {
-    setItems(prev => prev.filter(i => !lockedItemIds.has(i.localId)))
-    setDrinkItems(prev => prev.filter(d => !lockedDrinkIds.has(d.localId)))
+    // Restore the full snapshot taken before the combo started — removes both locked
+    // items (frijoles/refresco) and any unlocked gorditas added during the combo.
+    setItems(comboSnapshotItems ?? [])
+    setDrinkItems(comboSnapshotDrinks ?? [])
     setLockedItemIds(new Set())
     setLockedDrinkIds(new Set())
     setComboTarget(null)
     setMasaFijaId(null)
+    setComboSnapshotItems(null)
+    setComboSnapshotDrinks(null)
   }
 
   // Called when a combo is complete and the employee presses "Agregar combo".
@@ -173,6 +180,8 @@ export default function OrderScreen() {
     setLockedDrinkIds(new Set())
     setComboTarget(null)
     setMasaFijaId(null)
+    setComboSnapshotItems(null)
+    setComboSnapshotDrinks(null)
   }
 
   function handleDeleteItem(localId: string) {
@@ -223,6 +232,10 @@ export default function OrderScreen() {
   function handleSelectCombo(comboId: 1 | 2) {
     const harina = tiposMasa.find(m => m.nombre.toLowerCase().includes('harina'))
     if (!harina) return
+
+    // Snapshot before touching anything — restored in full if combo is cancelled
+    setComboSnapshotItems([...items])
+    setComboSnapshotDrinks([...drinkItems])
 
     const baseCount = items.reduce((s, i) => s + i.cantidad, 0)
     setComboBase(baseCount)
