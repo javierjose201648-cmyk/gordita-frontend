@@ -405,6 +405,13 @@ export default function OrderScreen() {
               {user?.nombre || user?.username}
             </span>
             <button
+              onClick={() => window.open(window.location.pathname + '#cocina', '_blank')}
+              className="bg-orange-700 hover:bg-orange-800 active:bg-orange-900
+                         text-white text-sm px-3 py-1.5 rounded-xl transition-colors whitespace-nowrap"
+            >
+              🍽️ Cocina
+            </button>
+            <button
               onClick={() => setShowRefri(true)}
               className="bg-orange-700 hover:bg-orange-800 active:bg-orange-900
                          text-white text-sm px-3 py-1.5 rounded-xl transition-colors whitespace-nowrap"
