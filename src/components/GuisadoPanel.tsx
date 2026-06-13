@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import type { Guisado, TipoMasa, OrderItem } from '../types'
 import NumericKeypad from './NumericKeypad'
 
@@ -35,15 +35,15 @@ export default function GuisadoPanel({
   const [masaId,    setMasaId]    = useState<number>(1)
   const [miniValue, setMiniValue] = useState('')
 
-  // useState runs once on mount — tiposMasa is empty at that point (fetch in progress).
-  // This effect fires when masas first become available and sets Harina as default.
-  const initialized = useRef(false)
+  // Resets to Harina whenever:
+  // - masas first load (masas.length changes from 0)
+  // - component remounts after a phase change (fresh mount with masas already loaded)
+  // - combo ends and masaFijaId goes back to null/undefined
   useEffect(() => {
-    if (masaFijaId || initialized.current || masas.length === 0) return
-    initialized.current = true
+    if (masaFijaId || masas.length === 0) return
     const harina = masas.find(m => masaLabel(m.nombre) === 'Harina')
     setMasaId(harina?.id ?? masas[0].id)
-  }, [masas.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [masas.length, masaFijaId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // When a combo locks the masa, use masaFijaId; otherwise use the user-selected masaId
   const activeMasaId = masaFijaId ?? masaId
