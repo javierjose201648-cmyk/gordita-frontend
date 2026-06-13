@@ -116,6 +116,7 @@ export const api = {
       id: number;
       numero_orden: string;
       total: number;
+      estado: string;
       creado_en: string;
       gorditas: { guisado: string; masa: string; cantidad: number }[];
       bebidas:  { nombre: string; tamaño: string; cantidad: number }[];
