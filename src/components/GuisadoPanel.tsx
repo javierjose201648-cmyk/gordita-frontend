@@ -45,17 +45,19 @@ export default function GuisadoPanel({
     setMasaId(harina?.id ?? masas[0].id)
   }, [masas.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const selectedMasa = masas.find(m => m.id === masaId) ?? masas[0]
+  // When a combo locks the masa, use masaFijaId; otherwise use the user-selected masaId
+  const activeMasaId = masaFijaId ?? masaId
+  const selectedMasa = masas.find(m => m.id === activeMasaId) ?? masas[0]
 
   function handleGuisado(g: Guisado) {
     const cantidad        = Math.max(1, parseInt(miniValue) || 1)
-    const precio_unitario = selectedMasa?.precio ?? 20
+    const precio_unitario = Number(selectedMasa?.precio ?? 20)
     const label           = selectedMasa ? masaLabel(selectedMasa.nombre) : 'Harina'
 
     onAdd({
       guisado_id:     g.id,
       guisado_nombre: g.nombre,
-      tipo_masa_id:   masaId,
+      tipo_masa_id:   activeMasaId,
       masa_label:     label,
       cantidad,
       precio_unitario,
