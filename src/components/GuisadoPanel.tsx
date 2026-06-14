@@ -5,19 +5,12 @@ import NumericKeypad from './NumericKeypad'
 interface Props {
   guisados:       Guisado[]
   tiposMasa:      TipoMasa[]
-  masaFijaId?:    number   // if set, locks masa selection (used by combos)
-  comboMode:      boolean  // true while completing a combo
+  masaFijaId?:    number
+  comboMode:      boolean
   onAdd:          (item: Omit<OrderItem, 'localId'>) => void
   onCancelCombo:  () => void
   onRefrescos:    () => void
   onCombos:       () => void
-}
-
-/** Maps DB masa nombre → display label */
-function masaLabel(nombre: string) {
-  const n = nombre.toLowerCase()
-  if (n.includes('maíz') || n.includes('maiz') || n.includes('azul')) return 'Maíz'
-  return 'Harina'
 }
 
 export default function GuisadoPanel({
@@ -32,39 +25,43 @@ export default function GuisadoPanel({
 }: Props) {
   const masas = tiposMasa.filter(m => m.disponible)
 
-  const [masaId,    setMasaId]    = useState<number>(1)
+  // null = user hasn't explicitly picked a masa → falls back to Harina synchronously,
+  // no useEffect needed, no flash.
+  const [masaId, setMasaId] = useState<number | null>(null)
   const [miniValue, setMiniValue] = useState('')
 
-  // Resets to Harina whenever:
-  // - masas first load (masas.length changes from 0)
-  // - component remounts after a phase change (fresh mount with masas already loaded)
-  // - combo ends and masaFijaId goes back to null/undefined
-  useEffect(() => {
-    if (masaFijaId || masas.length === 0) return
-    const harina = masas.find(m => masaLabel(m.nombre) === 'Harina')
-    setMasaId(harina?.id ?? masas[0].id)
-  }, [masas.length, masaFijaId]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Find Harina by actual name (not by a mapping function that breaks new masas).
+  // Falls back to first available masa if none contains "harina".
+  const harineId =
+    masas.find(m => m.nombre.toLowerCase().includes('harina'))?.id ??
+    masas[0]?.id ??
+    null
 
-  // When a combo locks the masa, use masaFijaId; otherwise use the user-selected masaId
-  const activeMasaId = masaFijaId ?? masaId
-  const selectedMasa = masas.find(m => m.id === activeMasaId) ?? masas[0]
+  // Priority: combo lock > explicit user pick > Harina default
+  const activeMasaId = masaFijaId ?? masaId ?? harineId
+  const selectedMasa = masas.find(m => m.id === activeMasaId)
+
+  // When combo ends (masaFijaId → undefined/null), clear the explicit selection
+  // so Harina re-applies automatically without any flash.
+  useEffect(() => {
+    if (!masaFijaId) setMasaId(null)
+  }, [masaFijaId])
 
   function handleGuisado(g: Guisado) {
+    if (!selectedMasa || activeMasaId == null) return
     const cantidad        = Math.max(1, parseInt(miniValue) || 1)
-    const precio_unitario = Number(selectedMasa?.precio ?? 20)
-    const label           = selectedMasa ? masaLabel(selectedMasa.nombre) : 'Harina'
+    const precio_unitario = Number(selectedMasa.precio)
 
     onAdd({
       guisado_id:     g.id,
       guisado_nombre: g.nombre,
       tipo_masa_id:   activeMasaId,
-      masa_label:     label,
+      masa_label:     selectedMasa.nombre,   // use real name, not a mapped label
       cantidad,
       precio_unitario,
       subtotal: precio_unitario * cantidad,
     })
-
-    setMiniValue('') // reset after every add
+    setMiniValue('')
   }
 
   return (
@@ -100,7 +97,7 @@ export default function GuisadoPanel({
       {masaFijaId ? (
         <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2 text-center">
           <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
-            Masa fija: {masaLabel(masas.find(m => m.id === masaFijaId)?.nombre ?? 'Harina')}
+            Masa fija: {masas.find(m => m.id === masaFijaId)?.nombre ?? 'Harina'}
           </p>
         </div>
       ) : (
@@ -108,18 +105,19 @@ export default function GuisadoPanel({
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
             Tipo de masa
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          {/* Up to 4 per row — new masas fit without pushing anything down */}
+          <div className="grid grid-cols-4 gap-2">
             {masas.map(m => (
               <button
                 key={m.id}
                 onClick={() => setMasaId(m.id)}
                 className={`py-2 rounded-xl font-bold transition-colors border-2 ${
-                  masaId === m.id
+                  activeMasaId === m.id
                     ? 'bg-orange-500 border-orange-500 text-white shadow-md shadow-orange-200'
                     : 'bg-white border-gray-200 text-gray-600 hover:border-orange-300'
                 }`}
               >
-                <div className="text-sm">{masaLabel(m.nombre)}</div>
+                <div className="text-sm">{m.nombre}</div>
                 <div className="text-xs opacity-70">${m.precio} c/u</div>
               </button>
             ))}

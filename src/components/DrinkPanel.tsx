@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import type { Refresco, DrinkItem } from '../types'
+import { useState, useEffect } from 'react'
+import type { Refresco, DrinkItem, RefriEntry } from '../types'
+import { api } from '../api/client'
 import NumericKeypad from './NumericKeypad'
 
 interface Props {
@@ -19,8 +20,29 @@ const PALETAS = [
 
 export default function DrinkPanel({ refrescos, onAdd, onBack }: Props) {
   const [miniValue, setMiniValue] = useState('')
+  const [refri, setRefri] = useState<RefriEntry[]>([])
+
+  // Fetch refri inventory once on mount so we know what's in stock
+  useEffect(() => {
+    api.refri.getAll().then(setRefri).catch(() => {/* show all as available if fetch fails */})
+  }, [])
+
+  // Build a quick lookup: categoria_id → cantidad in refri
+  const refriStock = new Map<number, number>()
+  for (const entry of refri) {
+    refriStock.set(entry.categoria_id, entry.cantidad)
+  }
+
+  // Returns true if this refresco is out of stock in the refri
+  function sinStock(r: Refresco): boolean {
+    if (r.categoria_id == null) return false          // no refri tracking → always available
+    const stock = refriStock.get(r.categoria_id)
+    if (stock === undefined) return false             // category not tracked → available
+    return stock <= 0
+  }
 
   function handleDrink(r: Refresco) {
+    if (sinStock(r)) return
     const cantidad = Math.max(1, parseInt(miniValue) || 1)
     onAdd({
       refresco_id:     r.id,
@@ -60,11 +82,6 @@ export default function DrinkPanel({ refrescos, onAdd, onBack }: Props) {
           <p className="text-sm">Sin bebidas disponibles</p>
         </div>
       ) : (
-        /*
-         * CSS columns — categories flow top→bottom then left→right.
-         * break-inside-avoid keeps each category block together.
-         * Short categories share a column with the next one automatically.
-         */
         <div className="columns-3 gap-x-2">
           {Array.from(grupos.entries()).map(([cat, items], idx) => {
             const p = PALETAS[idx % PALETAS.length]
@@ -76,30 +93,46 @@ export default function DrinkPanel({ refrescos, onAdd, onBack }: Props) {
                   {cat}
                 </span>
 
-                {/* Drinks — stacked vertically within the column */}
                 <div className="flex flex-col gap-1">
                   {items.map(r => {
-                    const sabor = r.sabor?.toLowerCase()
+                    const agotado  = sinStock(r)
+                    const sabor    = r.sabor?.toLowerCase()
                     const showSabor = sabor && sabor !== 'original' && sabor !== 'regular' && sabor !== ''
+
                     return (
                       <button
                         key={r.id}
                         onClick={() => handleDrink(r)}
-                        className={`w-full flex items-center justify-between
-                                   px-2 py-1.5 rounded-xl border-2 transition-all
-                                   active:scale-95 text-left ${p.btn}`}
+                        disabled={agotado}
+                        className={`w-full flex flex-col px-2 py-1.5 rounded-xl border-2
+                                   transition-all text-left
+                                   ${agotado
+                                     ? 'opacity-40 cursor-not-allowed bg-gray-100 border-gray-200'
+                                     : `active:scale-95 ${p.btn}`
+                                   }`}
                       >
-                        <div className="flex-1 min-w-0 mr-1">
-                          <p className={`font-semibold text-xs leading-tight line-clamp-1 ${p.texto}`}>
-                            {r.nombre}
-                          </p>
-                          <p className="text-xs text-gray-400 leading-tight line-clamp-1">
-                            {showSabor ? `${r.sabor} · ${r.tamaño}` : r.tamaño}
-                          </p>
+                        {/* "No hay en el refri" badge — only when out of stock */}
+                        {agotado && (
+                          <span className="text-xs font-bold text-red-500 leading-tight mb-0.5">
+                            No hay en el refri
+                          </span>
+                        )}
+
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex-1 min-w-0 mr-1">
+                            <p className={`font-semibold text-xs leading-tight line-clamp-1
+                                          ${agotado ? 'text-gray-400' : p.texto}`}>
+                              {r.nombre}
+                            </p>
+                            <p className="text-xs text-gray-400 leading-tight line-clamp-1">
+                              {showSabor ? `${r.sabor} · ${r.tamaño}` : r.tamaño}
+                            </p>
+                          </div>
+                          <span className={`font-black text-sm shrink-0
+                                          ${agotado ? 'text-gray-400' : p.precio}`}>
+                            ${r.precio}
+                          </span>
                         </div>
-                        <span className={`font-black text-sm shrink-0 ${p.precio}`}>
-                          ${r.precio}
-                        </span>
                       </button>
                     )
                   })}
