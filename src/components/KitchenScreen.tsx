@@ -1,38 +1,31 @@
 import { useEffect, useState, useCallback } from 'react'
-import { api, tokenStore } from '../api/client'
+import { api } from '../api/client'
 
-type TurnoOrder = Awaited<ReturnType<typeof api.ordenes.getTurno>>[number]
+type TurnoOrder = Awaited<ReturnType<typeof api.ordenes.getTurnoKitchen>>[number]
+
+// The kitchen key comes from ?k= in the URL — set once in the .bat file, never changes.
+const kitchenKey = new URLSearchParams(window.location.search).get('k') ?? ''
 
 export default function KitchenScreen() {
-  const [hasToken, setHasToken] = useState(() => !!tokenStore.get())
-  const [orders,   setOrders]   = useState<TurnoOrder[]>([])
-  const [tick,     setTick]     = useState(new Date())
-
-  // Detect login from the sales window instantly via storage event
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'gorditas_token') setHasToken(!!e.newValue)
-    }
-    window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
-  }, [])
+  const [orders, setOrders] = useState<TurnoOrder[]>([])
+  const [tick,   setTick]   = useState(new Date())
+  const [error,  setError]  = useState<string | null>(null)
 
   const fetchOrders = useCallback(async () => {
-    if (!tokenStore.get()) return
     try {
-      setOrders(await api.ordenes.getTurno())
+      setOrders(await api.ordenes.getTurnoKitchen(kitchenKey))
       setTick(new Date())
-    } catch {
-      setHasToken(false) // token expirado
+      setError(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error de conexión')
     }
   }, [])
 
   useEffect(() => {
-    if (!hasToken) { setOrders([]); return }
     fetchOrders()
     const id = setInterval(fetchOrders, 3000)
     return () => clearInterval(id)
-  }, [hasToken, fetchOrders])
+  }, [fetchOrders])
 
   // Clock in header
   const [clock, setClock] = useState(() =>
@@ -45,23 +38,20 @@ export default function KitchenScreen() {
     return () => clearInterval(id)
   }, [])
 
-  // ── Waiting screen ────────────────────────────────────────────
-  if (!hasToken) {
+  // Sin llave configurada en la URL
+  if (!kitchenKey) {
     return (
-      <div className="h-screen bg-gray-900 flex flex-col items-center justify-center gap-6 select-none">
-        <div className="text-8xl animate-pulse">🍽️</div>
-        <h1 className="text-white text-3xl font-black tracking-wide">Gorditas Luly</h1>
-        <p className="text-gray-500 text-lg">Esperando inicio de turno…</p>
-        <p className="text-gray-600 text-sm">Inicia sesión en la pantalla de ventas</p>
+      <div className="h-screen bg-gray-900 flex flex-col items-center justify-center gap-4 select-none">
+        <div className="text-6xl">⚠️</div>
+        <p className="text-yellow-400 text-xl font-bold">Pantalla de cocina no configurada</p>
+        <p className="text-gray-500 text-sm">Falta el parámetro ?k= en la URL</p>
       </div>
     )
   }
 
-  // Newest orders at the top
-  const sorted = [...orders].reverse()
+  const sorted  = [...orders].reverse()
   const lastSec = tick.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
 
-  // ── Kitchen display ───────────────────────────────────────────
   return (
     <div className="h-screen bg-gray-900 flex flex-col overflow-hidden select-none">
 
@@ -74,6 +64,7 @@ export default function KitchenScreen() {
           </span>
         </div>
         <div className="flex items-center gap-4 text-orange-200 text-sm font-mono">
+          {error && <span className="text-red-300 text-xs">⚠ {error}</span>}
           <span>↻ {lastSec}</span>
           <span className="text-orange-300 font-bold text-base">{clock}</span>
         </div>

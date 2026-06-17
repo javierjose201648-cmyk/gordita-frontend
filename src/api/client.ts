@@ -41,6 +41,19 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   return data as T;
 }
 
+// Request dedicado para la pantalla de cocina — usa X-Kitchen-Token, no JWT
+async function reqKitchen<T>(kitchenKey: string, path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Kitchen-Token': kitchenKey,
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as { message?: string }).message ?? `Error ${res.status}`);
+  return data as T;
+}
+
 // ── Admin user type (no password) ────────────────────────────
 export interface AdminUser {
   id: number;
@@ -112,6 +125,16 @@ export const api = {
     }),
 
   ordenes: {
+    getTurnoKitchen: (key: string) => reqKitchen<{
+      id: number;
+      numero_orden: string;
+      total: number;
+      estado: string;
+      creado_en: string;
+      gorditas: { guisado: string; masa: string; cantidad: number }[];
+      bebidas:  { nombre: string; tamaño: string; cantidad: number }[];
+    }[]>(key, '/api/ordenes/cocina'),
+
     getTurno: () => req<{
       id: number;
       numero_orden: string;
