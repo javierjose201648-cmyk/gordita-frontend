@@ -89,7 +89,7 @@ export default function KitchenScreen() {
             <p className="text-2xl font-bold text-gray-500">Sin órdenes pendientes</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6 gap-4 items-start">
+          <div className="grid grid-cols-2 xl:grid-cols-6 gap-4 items-start">
             {sorted.map(order => {
               const hora = new Date(order.creado_en).toLocaleTimeString('es-MX', {
                 hour: '2-digit', minute: '2-digit', hour12: false,
