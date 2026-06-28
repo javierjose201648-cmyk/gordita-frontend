@@ -82,7 +82,7 @@ export default function DrinkPanel({ refrescos, onAdd, onBack }: Props) {
           <p className="text-sm">Sin bebidas disponibles</p>
         </div>
       ) : (
-        <div className="columns-5 gap-x-2">
+        <div className="columns-7 gap-x-2">
           {Array.from(grupos.entries()).map(([cat, items], idx) => {
             const p = PALETAS[idx % PALETAS.length]
             return (
