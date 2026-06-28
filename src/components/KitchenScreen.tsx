@@ -89,7 +89,7 @@ export default function KitchenScreen() {
             <p className="text-2xl font-bold text-gray-500">Sin órdenes pendientes</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 items-start">
+          <div className="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 items-start">
             {sorted.map(order => {
               const hora = new Date(order.creado_en).toLocaleTimeString('es-MX', {
                 hour: '2-digit', minute: '2-digit', hour12: false,
@@ -105,7 +105,7 @@ export default function KitchenScreen() {
               const doble = totalFilas > 5
 
               return (
-                <div key={order.id} className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+                <div key={order.id} className={`bg-white rounded-2xl shadow-2xl overflow-hidden ${doble ? 'col-span-2' : ''}`}>
 
                   {/* Card header — compacto */}
                   <div className="bg-orange-500 px-3 py-2 flex items-center justify-between">
