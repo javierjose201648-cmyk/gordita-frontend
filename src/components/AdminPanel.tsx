@@ -276,12 +276,15 @@ function UsuariosSection() {
 
 // ── Guisados ──────────────────────────────────────────────────
 function GuisadosSection() {
-  const [guisados, setGuisados] = useState<Guisado[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [nombre,   setNombre]   = useState('')
-  const [error,    setError]    = useState('')
-  const [saving,   setSaving]   = useState(false)
+  const [guisados,   setGuisados]   = useState<Guisado[]>([])
+  const [loading,    setLoading]    = useState(true)
+  const [showForm,   setShowForm]   = useState(false)
+  const [nombre,     setNombre]     = useState('')
+  const [error,      setError]      = useState('')
+  const [saving,     setSaving]     = useState(false)
+  const [editingId,  setEditingId]  = useState<number | null>(null)
+  const [editNombre, setEditNombre] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -299,6 +302,22 @@ function GuisadosSection() {
       setNombre(''); setShowForm(false); await load()
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Error') }
     finally { setSaving(false) }
+  }
+
+  function startEdit(g: Guisado) {
+    setEditingId(g.id); setEditNombre(g.nombre); setError('')
+  }
+
+  function cancelEdit() { setEditingId(null); setEditNombre('') }
+
+  async function handleSaveEdit(g: Guisado) {
+    if (!editNombre.trim()) { setError('El nombre no puede estar vacío'); return }
+    setEditSaving(true); setError('')
+    try {
+      await api.admin.guisados.update(g.id, { nombre: editNombre.trim() })
+      cancelEdit(); await load()
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Error al guardar') }
+    finally { setEditSaving(false) }
   }
 
   async function toggleDisponible(g: Guisado) {
@@ -339,16 +358,38 @@ function GuisadosSection() {
         <div className="space-y-2">
           {guisados.map(g => (
             <div key={g.id}
-              className={`flex items-center gap-3 rounded-2xl px-4 py-3 border-2
-                          ${g.disponible ? 'bg-white border-gray-100' : 'bg-gray-50 border-gray-200 opacity-60'}`}>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800 text-sm">{g.nombre}</p>
-              </div>
-              <div className="flex gap-2 shrink-0">
-                <ActionButton label={g.disponible ? 'Ocultar' : 'Mostrar'}
-                  onClick={() => toggleDisponible(g)} color={g.disponible ? 'gray' : 'green'} />
-                <ActionButton label="Eliminar" onClick={() => handleDelete(g)} color="red" />
-              </div>
+              className={`rounded-2xl border-2 overflow-hidden
+                          ${g.disponible ? 'bg-white border-gray-100' : 'bg-gray-50 border-gray-200'}`}>
+
+              {editingId === g.id ? (
+                /* Modo edición inline */
+                <div className="flex items-center gap-2 px-4 py-3">
+                  <input
+                    autoFocus
+                    value={editNombre}
+                    onChange={e => setEditNombre(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleSaveEdit(g); if (e.key === 'Escape') cancelEdit() }}
+                    className="flex-1 border-2 border-orange-400 rounded-xl px-3 py-1.5 text-sm
+                               font-semibold focus:outline-none"
+                  />
+                  <ActionButton label={editSaving ? '...' : 'Guardar'} onClick={() => handleSaveEdit(g)}
+                    color="green" disabled={editSaving} />
+                  <ActionButton label="Cancelar" onClick={cancelEdit} color="gray" />
+                </div>
+              ) : (
+                /* Modo normal */
+                <div className={`flex items-center gap-3 px-4 py-3 ${!g.disponible ? 'opacity-60' : ''}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-800 text-sm">{g.nombre}</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <ActionButton label="Editar" onClick={() => startEdit(g)} color="blue" />
+                    <ActionButton label={g.disponible ? 'Ocultar' : 'Mostrar'}
+                      onClick={() => toggleDisponible(g)} color={g.disponible ? 'gray' : 'green'} />
+                    <ActionButton label="Eliminar" onClick={() => handleDelete(g)} color="red" />
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
