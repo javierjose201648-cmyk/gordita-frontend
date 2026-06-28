@@ -107,16 +107,16 @@ export default function KitchenScreen() {
               return (
                 <div key={order.id} className="bg-white rounded-2xl shadow-2xl overflow-hidden">
 
-                  {/* Card header */}
-                  <div className="bg-orange-500 px-4 py-3 flex items-center justify-between">
-                    <span className="text-white font-black text-4xl leading-none">
+                  {/* Card header — compacto */}
+                  <div className="bg-orange-500 px-3 py-2 flex items-center justify-between">
+                    <span className="text-white font-black text-2xl leading-none">
                       #{order.numero_orden}
                     </span>
                     <span className="text-orange-100 text-sm font-semibold">{hora}</span>
                   </div>
 
                   {/* Gorditas — 1 columna normal, 2 columnas cuando hay muchas filas */}
-                  <div className={`px-3 pt-2 pb-1.5 ${doble ? 'grid grid-cols-2 gap-x-2 gap-y-1' : 'space-y-1'}`}>
+                  <div className={`px-3 pt-2 pb-1.5 ${doble ? 'grid grid-cols-2 gap-x-4 gap-y-1' : 'space-y-1'}`}>
                     {order.gorditas.flatMap((g, i) => {
                       const prev = order.gorditas[i - 1]
                       const esNuevoPlato = i === 0 || (prev && (prev.plato ?? 1) !== (g.plato ?? 1))
@@ -146,13 +146,13 @@ export default function KitchenScreen() {
 
                       result.push(
                         <div key={i} className="flex items-center gap-1.5 min-w-0">
-                          <span className="bg-orange-100 text-orange-700 font-black text-sm
-                                           rounded-md px-1.5 py-px shrink-0 leading-tight min-w-[1.75rem] text-center">
+                          <span className="bg-orange-100 text-orange-700 font-black text-base
+                                           rounded-md px-1.5 py-px shrink-0 leading-tight min-w-[2rem] text-center">
                             {g.cantidad}×
                           </span>
                           <div className="min-w-0">
-                            <p className="font-bold text-gray-800 text-sm leading-tight truncate">{g.guisado}</p>
-                            <p className="text-xs text-gray-400 leading-tight">{g.masa}</p>
+                            <p className="font-bold text-gray-800 text-base leading-tight truncate">{g.guisado}</p>
+                            <p className="text-sm text-gray-400 leading-tight">{g.masa}</p>
                           </div>
                         </div>
                       )
