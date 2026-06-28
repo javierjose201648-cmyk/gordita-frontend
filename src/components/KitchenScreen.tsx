@@ -110,7 +110,7 @@ export default function KitchenScreen() {
                   </div>
 
                   {/* Gorditas con divisores por plato */}
-                  <div className="px-4 pt-3 pb-2 space-y-2">
+                  <div className="px-3 pt-2 pb-1.5 space-y-1">
                     {order.gorditas.flatMap((g, i) => {
                       const prev = order.gorditas[i - 1]
                       const esNuevoPlato = i === 0 || (prev && (prev.plato ?? 1) !== (g.plato ?? 1))
@@ -119,18 +119,18 @@ export default function KitchenScreen() {
                       if (hayVariosPlatos && i === 0) {
                         result.push(
                           <div key="plato-1-label" className="flex justify-end">
-                            <span className="text-xs font-black text-orange-500 bg-orange-100
-                                             px-2.5 py-0.5 rounded-full">
+                            <span className="text-[10px] font-black text-orange-500 bg-orange-100
+                                             px-2 py-px rounded-full leading-tight">
                               Plato 1
                             </span>
                           </div>
                         )
                       } else if (hayVariosPlatos && esNuevoPlato) {
                         result.push(
-                          <div key={`div-${i}`} className="flex items-center gap-2 pt-1 pb-0.5">
+                          <div key={`div-${i}`} className="flex items-center gap-1.5 my-0.5">
                             <div className="flex-1 h-[2px] bg-orange-400 rounded-full" />
-                            <span className="text-xs font-black text-orange-600 bg-orange-100
-                                             px-2.5 py-0.5 rounded-full shrink-0 border border-orange-300">
+                            <span className="text-[10px] font-black text-orange-600 bg-orange-100
+                                             px-2 py-px rounded-full shrink-0 border border-orange-300 leading-tight">
                               Plato {g.plato ?? i + 1}
                             </span>
                           </div>
@@ -138,14 +138,14 @@ export default function KitchenScreen() {
                       }
 
                       result.push(
-                        <div key={i} className="flex items-start gap-2">
-                          <span className="bg-orange-100 text-orange-700 font-black text-base
-                                           rounded-lg px-2 py-0.5 shrink-0 leading-tight min-w-[2rem] text-center">
+                        <div key={i} className="flex items-center gap-1.5">
+                          <span className="bg-orange-100 text-orange-700 font-black text-sm
+                                           rounded-md px-1.5 py-px shrink-0 leading-tight min-w-[1.75rem] text-center">
                             {g.cantidad}×
                           </span>
                           <div className="min-w-0">
-                            <p className="font-bold text-gray-800 text-base leading-tight">{g.guisado}</p>
-                            <p className="text-sm text-gray-400 leading-tight">{g.masa}</p>
+                            <p className="font-bold text-gray-800 text-sm leading-tight">{g.guisado}</p>
+                            <p className="text-xs text-gray-400 leading-tight">{g.masa}</p>
                           </div>
                         </div>
                       )
