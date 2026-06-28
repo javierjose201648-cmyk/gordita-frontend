@@ -131,7 +131,7 @@ export const api = {
       total: number;
       estado: string;
       creado_en: string;
-      gorditas: { guisado: string; masa: string; cantidad: number }[];
+      gorditas: { guisado: string; masa: string; cantidad: number; plato: number }[];
       bebidas:  { nombre: string; tamaño: string; cantidad: number }[];
     }[]>(key, '/api/ordenes/cocina'),
 
@@ -141,7 +141,7 @@ export const api = {
       total: number;
       estado: string;
       creado_en: string;
-      gorditas: { guisado: string; masa: string; cantidad: number }[];
+      gorditas: { guisado: string; masa: string; cantidad: number; plato: number }[];
       bebidas:  { nombre: string; tamaño: string; cantidad: number }[];
     }[]>('/api/ordenes/turno'),
 

@@ -23,7 +23,7 @@ interface TurnoOrder {
   numero_orden: string
   total: number
   creado_en: string
-  gorditas: { guisado: string; masa: string; cantidad: number }[]
+  gorditas: { guisado: string; masa: string; cantidad: number; plato: number }[]
   bebidas:  { nombre: string; tamaño: string; cantidad: number }[]
 }
 
@@ -45,6 +45,9 @@ export default function OrderScreen() {
   })
   const [drinkItems,    setDrinkItems]    = useState<DrinkItem[]>(() => {
     try { return JSON.parse(localStorage.getItem(ORDER_KEY) ?? '{}').drinkItems ?? [] } catch { return [] }
+  })
+  const [currentPlato,  setCurrentPlato]  = useState<number>(() => {
+    try { return JSON.parse(localStorage.getItem(ORDER_KEY) ?? '{}').currentPlato ?? 1 } catch { return 1 }
   })
   const [masaFijaId,    setMasaFijaId]    = useState<number | null>(null)
   const [lockedItemIds,  setLockedItemIds]  = useState<Set<string>>(new Set())
@@ -115,8 +118,8 @@ export default function OrderScreen() {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem(ORDER_KEY, JSON.stringify({ items, drinkItems, soldByMasa }))
-  }, [items, drinkItems, soldByMasa])
+    localStorage.setItem(ORDER_KEY, JSON.stringify({ items, drinkItems, soldByMasa, currentPlato }))
+  }, [items, drinkItems, soldByMasa, currentPlato])
 
   useEffect(() => {
     if (!toast) return
@@ -139,12 +142,13 @@ export default function OrderScreen() {
               + drinkItems.reduce((s, i) => s + i.subtotal, 0)
 
   // ── Gordita handlers ───────────────────────────────────────
-  // Adds directly to items. Merges with existing non-locked entries of same guisado+masa.
+  // Adds directly to items. Merges with existing non-locked entries of same guisado+masa+plato.
   const handleAddItem = useCallback((item: Omit<OrderItem, 'localId'>) => {
     setItems(prev => {
       const existing = prev.find(
         i => i.guisado_id === item.guisado_id &&
              i.tipo_masa_id === item.tipo_masa_id &&
+             (i.plato ?? 1) === currentPlato &&
              !lockedItemIds.has(i.localId)
       )
       if (existing) {
@@ -154,9 +158,9 @@ export default function OrderScreen() {
             : i
         )
       }
-      return [...prev, { ...item, localId: crypto.randomUUID() }]
+      return [...prev, { ...item, localId: crypto.randomUUID(), plato: currentPlato }]
     })
-  }, [lockedItemIds])
+  }, [lockedItemIds, currentPlato])
 
   // Cancels an active combo: removes locked items/drinks and resets combo state.
   // Stays in guisados — guisados is the home screen now.
@@ -171,6 +175,9 @@ export default function OrderScreen() {
     setMasaFijaId(null)
     setComboSnapshotItems(null)
     setComboSnapshotDrinks(null)
+    // Restore currentPlato to what it was before the combo (derived from snapshot)
+    const snap = comboSnapshotItems ?? []
+    setCurrentPlato(snap.length > 0 ? Math.max(...snap.map(i => i.plato ?? 1)) : 1)
   }
 
   // Called when a combo is complete and the employee presses "Agregar combo".
@@ -212,6 +219,13 @@ export default function OrderScreen() {
   function handleClear() {
     setItems(prev => prev.filter(i => lockedItemIds.has(i.localId)))
     setDrinkItems(prev => prev.filter(d => lockedDrinkIds.has(d.localId)))
+    setCurrentPlato(1)
+  }
+
+  function handleNuevoPlato() {
+    const tieneItems = items.some(i => (i.plato ?? 1) === currentPlato)
+    if (!tieneItems) return
+    setCurrentPlato(prev => prev + 1)
   }
 
   function resetOrder() {
@@ -223,6 +237,7 @@ export default function OrderScreen() {
     setLockedDrinkIds(new Set())
     setComboTarget(null)
     setComboBase(0)
+    setCurrentPlato(1)
     localStorage.removeItem(ORDER_KEY)
   }
 
@@ -293,6 +308,7 @@ export default function OrderScreen() {
           cantidad: 1,
           precio_unitario: precioMasa,
           subtotal: precioMasa,
+          plato: currentPlato,
         }])
         setLockedItemIds(new Set([itemId]))
       }
@@ -312,6 +328,7 @@ export default function OrderScreen() {
           tipo_masa_id: i.tipo_masa_id,
           guisado_id:   i.guisado_id,
           cantidad:     i.cantidad,
+          plato:        i.plato ?? 1,
         })),
         refrescos: drinkItems.map(d => ({
           refresco_id: d.refresco_id,
@@ -401,6 +418,10 @@ export default function OrderScreen() {
         ? handleFinishCombo
         : () => setPhase('payment')
       : () => setPhase('guisados')  // drinks + combos both return to guisados
+
+  // + Plato: visible solo en guisados sin combo activo; deshabilitado si el plato actual está vacío
+  const mostrarNuevoPlato  = phase === 'guisados' && comboTarget === null
+  const platoActualVacio   = !items.some(i => (i.plato ?? 1) === currentPlato)
 
   return (
     <div className="h-screen flex flex-col bg-orange-50 overflow-hidden">
@@ -542,6 +563,8 @@ export default function OrderScreen() {
               cobrarDisabled={comboIncompleto}
               onCobrar={cobrarAction}
               cobrarLabel={cobrarLabel}
+              onNuevoPlato={mostrarNuevoPlato ? handleNuevoPlato : undefined}
+              nuevoPlatoDisabled={platoActualVacio}
             />
           </div>
 
@@ -570,12 +593,22 @@ export default function OrderScreen() {
                         <span className="text-xs text-gray-400 font-medium">{hora}</span>
                       </div>
                       <div className="space-y-0.5">
-                        {o.gorditas.map((g, i) => (
-                          <p key={i} className="text-xs text-gray-600 leading-tight">
-                            {g.cantidad}× <span className="font-medium">{g.guisado}</span>
-                            <span className="text-gray-400"> · {g.masa}</span>
-                          </p>
-                        ))}
+                        {o.gorditas.flatMap((g, i) => {
+                          const prev = o.gorditas[i - 1]
+                          const showDivider = i > 0 && (prev.plato ?? 1) !== (g.plato ?? 1)
+                          const els = []
+                          if (showDivider) els.push(
+                            <div key={`d${i}`}
+                                 className="border-t border-dashed border-orange-300 my-0.5" />
+                          )
+                          els.push(
+                            <p key={i} className="text-xs text-gray-600 leading-tight">
+                              {g.cantidad}× <span className="font-medium">{g.guisado}</span>
+                              <span className="text-gray-400"> · {g.masa}</span>
+                            </p>
+                          )
+                          return els
+                        })}
                         {o.bebidas?.map((b, i) => (
                           <p key={`b${i}`} className="leading-tight"
                              style={{ fontSize: '10px' }}>

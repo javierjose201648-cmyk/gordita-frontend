@@ -98,18 +98,30 @@ export default function KitchenScreen() {
 
                   {/* Gorditas */}
                   <div className="px-4 pt-3 pb-2 space-y-2">
-                    {order.gorditas.map((g, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <span className="bg-orange-100 text-orange-700 font-black text-base
-                                         rounded-lg px-2 py-0.5 shrink-0 leading-tight min-w-[2rem] text-center">
-                          {g.cantidad}×
-                        </span>
-                        <div className="min-w-0">
-                          <p className="font-bold text-gray-800 text-base leading-tight">{g.guisado}</p>
-                          <p className="text-sm text-gray-400 leading-tight">{g.masa}</p>
+                    {order.gorditas.flatMap((g, i) => {
+                      const prev = order.gorditas[i - 1]
+                      const showDivider = i > 0 && (prev.plato ?? 1) !== (g.plato ?? 1)
+                      const result = []
+                      if (showDivider) {
+                        result.push(
+                          <div key={`div-${i}`}
+                               className="border-t-2 border-dashed border-orange-200 my-1" />
+                        )
+                      }
+                      result.push(
+                        <div key={i} className="flex items-start gap-2">
+                          <span className="bg-orange-100 text-orange-700 font-black text-base
+                                           rounded-lg px-2 py-0.5 shrink-0 leading-tight min-w-[2rem] text-center">
+                            {g.cantidad}×
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-bold text-gray-800 text-base leading-tight">{g.guisado}</p>
+                            <p className="text-sm text-gray-400 leading-tight">{g.masa}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                      return result
+                    })}
 
                     {/* Bebidas */}
                     {order.bebidas.length > 0 && (

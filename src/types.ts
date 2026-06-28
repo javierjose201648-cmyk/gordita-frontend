@@ -28,6 +28,7 @@ export interface OrderItem {
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
+  plato: number;          // número de plato (1, 2, 3…) — separador visual, no afecta precio
 }
 
 export interface CategoriaRefresco {

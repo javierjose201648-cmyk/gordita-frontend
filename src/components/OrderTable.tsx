@@ -1,16 +1,18 @@
 import type { OrderItem, DrinkItem } from '../types'
 
 interface Props {
-  items:           OrderItem[]
-  drinkItems:      DrinkItem[]
-  onDelete:        (localId: string) => void
-  onDeleteDrink:   (localId: string) => void
-  onClear:         () => void
-  onCobrar:        () => void
-  cobrarLabel?:    string        // overrides the default "Cobrar $total"
-  cobrarDisabled?: boolean       // extra disabled condition (e.g. combo not complete)
-  lockedItemIds?:  Set<string>   // localIds that cannot be deleted (combo fixed items)
-  lockedDrinkIds?: Set<string>   // localIds that cannot be deleted (combo fixed drinks)
+  items:               OrderItem[]
+  drinkItems:          DrinkItem[]
+  onDelete:            (localId: string) => void
+  onDeleteDrink:       (localId: string) => void
+  onClear:             () => void
+  onCobrar:            () => void
+  cobrarLabel?:        string        // overrides the default "Cobrar $total"
+  cobrarDisabled?:     boolean       // extra disabled condition (e.g. combo not complete)
+  lockedItemIds?:      Set<string>   // localIds that cannot be deleted (combo fixed items)
+  lockedDrinkIds?:     Set<string>   // localIds that cannot be deleted (combo fixed drinks)
+  onNuevoPlato?:       () => void    // undefined = button hidden (combo mode or non-guisados)
+  nuevoPlatoDisabled?: boolean       // button shown but grayed (current plate is empty)
 }
 
 export default function OrderTable({
@@ -24,6 +26,8 @@ export default function OrderTable({
   cobrarDisabled,
   lockedItemIds,
   lockedDrinkIds,
+  onNuevoPlato,
+  nuevoPlatoDisabled,
 }: Props) {
   const totalGorditas = items.reduce((s, i) => s + i.cantidad, 0)
   const totalBebidas  = drinkItems.reduce((s, i) => s + i.cantidad, 0)
@@ -32,7 +36,6 @@ export default function OrderTable({
 
   const hasAnything = items.length > 0 || drinkItems.length > 0
 
-  // Build a subtitle for the header
   const parts: string[] = []
   if (totalGorditas > 0) parts.push(`${totalGorditas} gordita${totalGorditas !== 1 ? 's' : ''}`)
   if (totalBebidas  > 0) parts.push(`${totalBebidas} bebida${totalBebidas  !== 1 ? 's' : ''}`)
@@ -67,10 +70,27 @@ export default function OrderTable({
           </div>
         ) : (
           <>
-            {/* Gordita items */}
-            {items.map(item => {
+            {/* Gordita items with plate dividers */}
+            {items.flatMap((item, idx) => {
+              const prev = items[idx - 1]
+              const showDivider = idx > 0 && (prev.plato ?? 1) !== (item.plato ?? 1)
               const locked = lockedItemIds?.has(item.localId)
-              return (
+              const result = []
+
+              if (showDivider) {
+                result.push(
+                  <div key={`plato-div-${item.localId}`}
+                       className="flex items-center gap-1.5 py-1 px-1">
+                    <div className="flex-1 border-t-2 border-dashed border-orange-300" />
+                    <span className="text-xs font-bold text-orange-400 shrink-0">
+                      Plato {item.plato ?? 1}
+                    </span>
+                    <div className="flex-1 border-t-2 border-dashed border-orange-300" />
+                  </div>
+                )
+              }
+
+              result.push(
                 <div
                   key={item.localId}
                   className={`flex items-center gap-2 rounded-xl px-3 py-2.5 transition-colors
@@ -103,6 +123,8 @@ export default function OrderTable({
                   )}
                 </div>
               )
+
+              return result
             })}
 
             {/* Drinks divider + items */}
@@ -158,11 +180,26 @@ export default function OrderTable({
       </div>
 
       {/* Footer */}
-      <div className="border-t border-gray-100 p-4 space-y-3 shrink-0">
+      <div className="border-t border-gray-100 p-4 space-y-2 shrink-0">
         <div className="flex items-center justify-between">
           <span className="text-gray-500 font-medium">Total</span>
           <span className="text-3xl font-black text-gray-900">${total}</span>
         </div>
+
+        {/* + Plato — solo visible en modo guisados normal (no combo) */}
+        {onNuevoPlato && (
+          <button
+            onClick={onNuevoPlato}
+            disabled={nuevoPlatoDisabled}
+            className="w-full border-2 border-dashed border-orange-300 hover:border-orange-500
+                       bg-orange-50 hover:bg-orange-100 active:bg-orange-200
+                       disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-orange-300
+                       disabled:hover:bg-orange-50
+                       text-orange-600 font-bold py-2 rounded-2xl text-sm transition-colors"
+          >
+            + Plato
+          </button>
+        )}
 
         <button
           onClick={onCobrar}
