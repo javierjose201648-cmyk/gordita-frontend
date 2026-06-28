@@ -97,6 +97,12 @@ export default function KitchenScreen() {
               const hayVariosPlatos = order.gorditas.some((g, i) =>
                 i > 0 && (order.gorditas[i - 1].plato ?? 1) !== (g.plato ?? 1)
               )
+              // Filas totales = gorditas + divisores entre platos + etiqueta "Plato 1"
+              const numDivisores = order.gorditas.filter((g, i) =>
+                i > 0 && (order.gorditas[i - 1].plato ?? 1) !== (g.plato ?? 1)
+              ).length
+              const totalFilas = order.gorditas.length + numDivisores + (hayVariosPlatos ? 1 : 0)
+              const doble = totalFilas > 5
 
               return (
                 <div key={order.id} className="bg-white rounded-2xl shadow-2xl overflow-hidden">
@@ -109,8 +115,8 @@ export default function KitchenScreen() {
                     <span className="text-orange-100 text-sm font-semibold">{hora}</span>
                   </div>
 
-                  {/* Gorditas con divisores por plato */}
-                  <div className="px-3 pt-2 pb-1.5 space-y-1">
+                  {/* Gorditas — 1 columna normal, 2 columnas cuando hay muchas filas */}
+                  <div className={`px-3 pt-2 pb-1.5 ${doble ? 'grid grid-cols-2 gap-x-2 gap-y-1' : 'space-y-1'}`}>
                     {order.gorditas.flatMap((g, i) => {
                       const prev = order.gorditas[i - 1]
                       const esNuevoPlato = i === 0 || (prev && (prev.plato ?? 1) !== (g.plato ?? 1))
@@ -118,7 +124,7 @@ export default function KitchenScreen() {
 
                       if (hayVariosPlatos && i === 0) {
                         result.push(
-                          <div key="plato-1-label" className="flex justify-end">
+                          <div key="plato-1-label" className={`flex justify-end ${doble ? 'col-span-2' : ''}`}>
                             <span className="text-[10px] font-black text-orange-500 bg-orange-100
                                              px-2 py-px rounded-full leading-tight">
                               Plato 1
@@ -127,7 +133,8 @@ export default function KitchenScreen() {
                         )
                       } else if (hayVariosPlatos && esNuevoPlato) {
                         result.push(
-                          <div key={`div-${i}`} className="flex items-center gap-1.5 my-0.5">
+                          <div key={`div-${i}`}
+                               className={`flex items-center gap-1.5 my-0.5 ${doble ? 'col-span-2' : ''}`}>
                             <div className="flex-1 h-[2px] bg-orange-400 rounded-full" />
                             <span className="text-[10px] font-black text-orange-600 bg-orange-100
                                              px-2 py-px rounded-full shrink-0 border border-orange-300 leading-tight">
@@ -138,13 +145,13 @@ export default function KitchenScreen() {
                       }
 
                       result.push(
-                        <div key={i} className="flex items-center gap-1.5">
+                        <div key={i} className="flex items-center gap-1.5 min-w-0">
                           <span className="bg-orange-100 text-orange-700 font-black text-sm
                                            rounded-md px-1.5 py-px shrink-0 leading-tight min-w-[1.75rem] text-center">
                             {g.cantidad}×
                           </span>
                           <div className="min-w-0">
-                            <p className="font-bold text-gray-800 text-sm leading-tight">{g.guisado}</p>
+                            <p className="font-bold text-gray-800 text-sm leading-tight truncate">{g.guisado}</p>
                             <p className="text-xs text-gray-400 leading-tight">{g.masa}</p>
                           </div>
                         </div>
@@ -153,11 +160,11 @@ export default function KitchenScreen() {
                       return result
                     })}
 
-                    {/* Bebidas */}
+                    {/* Bebidas — siempre ancho completo */}
                     {order.bebidas.length > 0 && (
-                      <div className="border-t border-gray-100 pt-2 mt-1 space-y-1">
+                      <div className={`border-t border-gray-100 pt-1.5 mt-0.5 space-y-1 ${doble ? 'col-span-2' : ''}`}>
                         {order.bebidas.map((b, i) => (
-                          <div key={i} className="flex items-center gap-2">
+                          <div key={i} className="flex items-center gap-1.5">
                             <span className="text-blue-400 font-bold text-sm shrink-0">
                               {b.cantidad}×
                             </span>
