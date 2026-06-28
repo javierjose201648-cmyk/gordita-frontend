@@ -82,7 +82,7 @@ export default function DrinkPanel({ refrescos, onAdd, onBack }: Props) {
           <p className="text-sm">Sin bebidas disponibles</p>
         </div>
       ) : (
-        <div className="columns-3 gap-x-2">
+        <div className="columns-5 gap-x-2">
           {Array.from(grupos.entries()).map(([cat, items], idx) => {
             const p = PALETAS[idx % PALETAS.length]
             return (
@@ -95,8 +95,8 @@ export default function DrinkPanel({ refrescos, onAdd, onBack }: Props) {
 
                 <div className="flex flex-col gap-1">
                   {items.map(r => {
-                    const agotado  = sinStock(r)
-                    const sabor    = r.sabor?.toLowerCase()
+                    const agotado   = sinStock(r)
+                    const sabor     = r.sabor?.toLowerCase()
                     const showSabor = sabor && sabor !== 'original' && sabor !== 'regular' && sabor !== ''
 
                     return (
@@ -104,35 +104,29 @@ export default function DrinkPanel({ refrescos, onAdd, onBack }: Props) {
                         key={r.id}
                         onClick={() => handleDrink(r)}
                         disabled={agotado}
-                        className={`w-full flex flex-col px-2 py-1.5 rounded-xl border-2
-                                   transition-all text-left
+                        className={`w-full aspect-square flex flex-col items-center justify-center
+                                   rounded-xl border-2 transition-all text-center gap-0.5 px-1
                                    ${agotado
                                      ? 'opacity-40 cursor-not-allowed bg-gray-100 border-gray-200'
                                      : `active:scale-95 ${p.btn}`
                                    }`}
                       >
-                        {/* "No hay en el refri" badge — only when out of stock */}
                         {agotado && (
-                          <span className="text-xs font-bold text-red-500 leading-tight mb-0.5">
-                            No hay en el refri
+                          <span className="text-[10px] font-bold text-red-500 leading-tight">
+                            Sin stock
                           </span>
                         )}
-
-                        <div className="flex items-center justify-between w-full">
-                          <div className="flex-1 min-w-0 mr-1">
-                            <p className={`font-semibold text-xs leading-tight line-clamp-1
-                                          ${agotado ? 'text-gray-400' : p.texto}`}>
-                              {r.nombre}
-                            </p>
-                            <p className="text-xs text-gray-400 leading-tight line-clamp-1">
-                              {showSabor ? `${r.sabor} · ${r.tamaño}` : r.tamaño}
-                            </p>
-                          </div>
-                          <span className={`font-black text-sm shrink-0
-                                          ${agotado ? 'text-gray-400' : p.precio}`}>
-                            ${r.precio}
-                          </span>
-                        </div>
+                        <p className={`font-bold text-sm leading-tight line-clamp-2
+                                      ${agotado ? 'text-gray-400' : p.texto}`}>
+                          {r.nombre}
+                        </p>
+                        <p className="text-xs text-gray-400 leading-tight line-clamp-1">
+                          {showSabor ? `${r.sabor} · ${r.tamaño}` : r.tamaño}
+                        </p>
+                        <span className={`font-black text-base leading-tight
+                                        ${agotado ? 'text-gray-400' : p.precio}`}>
+                          ${r.precio}
+                        </span>
                       </button>
                     )
                   })}
