@@ -94,6 +94,10 @@ export default function KitchenScreen() {
               const hora = new Date(order.creado_en).toLocaleTimeString('es-MX', {
                 hour: '2-digit', minute: '2-digit', hour12: false,
               })
+              const hayVariosPlatos = order.gorditas.some((g, i) =>
+                i > 0 && (order.gorditas[i - 1].plato ?? 1) !== (g.plato ?? 1)
+              )
+
               return (
                 <div key={order.id} className="bg-white rounded-2xl shadow-2xl overflow-hidden">
 
@@ -109,14 +113,30 @@ export default function KitchenScreen() {
                   <div className="px-4 pt-3 pb-2 space-y-2">
                     {order.gorditas.flatMap((g, i) => {
                       const prev = order.gorditas[i - 1]
-                      const showDivider = i > 0 && (prev.plato ?? 1) !== (g.plato ?? 1)
+                      const esNuevoPlato = i === 0 || (prev && (prev.plato ?? 1) !== (g.plato ?? 1))
                       const result = []
-                      if (showDivider) {
+
+                      if (hayVariosPlatos && i === 0) {
                         result.push(
-                          <div key={`div-${i}`}
-                               className="border-t-2 border-dashed border-orange-200 my-1" />
+                          <div key="plato-1-label" className="flex justify-end">
+                            <span className="text-xs font-black text-orange-500 bg-orange-100
+                                             px-2.5 py-0.5 rounded-full">
+                              Plato 1
+                            </span>
+                          </div>
+                        )
+                      } else if (hayVariosPlatos && esNuevoPlato) {
+                        result.push(
+                          <div key={`div-${i}`} className="flex items-center gap-2 pt-1 pb-0.5">
+                            <div className="flex-1 h-[2px] bg-orange-400 rounded-full" />
+                            <span className="text-xs font-black text-orange-600 bg-orange-100
+                                             px-2.5 py-0.5 rounded-full shrink-0 border border-orange-300">
+                              Plato {g.plato ?? i + 1}
+                            </span>
+                          </div>
                         )
                       }
+
                       result.push(
                         <div key={i} className="flex items-start gap-2">
                           <span className="bg-orange-100 text-orange-700 font-black text-base
@@ -129,6 +149,7 @@ export default function KitchenScreen() {
                           </div>
                         </div>
                       )
+
                       return result
                     })}
 
