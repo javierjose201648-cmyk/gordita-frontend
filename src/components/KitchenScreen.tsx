@@ -1,10 +1,13 @@
 import { useEffect, useState, useCallback } from 'react'
-import { api } from '../api/client'
+import { api, tokenStore } from '../api/client'
 
 type TurnoOrder = Awaited<ReturnType<typeof api.ordenes.getTurnoKitchen>>[number]
 
-// The kitchen key comes from ?k= in the URL — set once in the .bat file, never changes.
+// Computed once on page load — stable for the lifetime of this tab.
+// Priority: static kitchen token (?k=) > logged-in JWT > neither
 const kitchenKey = new URLSearchParams(window.location.search).get('k') ?? ''
+const authMode: 'token' | 'jwt' | 'none' =
+  kitchenKey ? 'token' : tokenStore.get() ? 'jwt' : 'none'
 
 export default function KitchenScreen() {
   const [orders, setOrders] = useState<TurnoOrder[]>([])
@@ -13,7 +16,10 @@ export default function KitchenScreen() {
 
   const fetchOrders = useCallback(async () => {
     try {
-      setOrders(await api.ordenes.getTurnoKitchen(kitchenKey))
+      const data = authMode === 'token'
+        ? await api.ordenes.getTurnoKitchen(kitchenKey)
+        : await api.ordenes.getTurno()
+      setOrders(data)
       setTick(new Date())
       setError(null)
     } catch (e) {
@@ -22,6 +28,7 @@ export default function KitchenScreen() {
   }, [])
 
   useEffect(() => {
+    if (authMode === 'none') return
     fetchOrders()
     const id = setInterval(fetchOrders, 3000)
     return () => clearInterval(id)
@@ -38,13 +45,16 @@ export default function KitchenScreen() {
     return () => clearInterval(id)
   }, [])
 
-  // Sin llave configurada en la URL
-  if (!kitchenKey) {
+  // ── Sin credencial ─────────────────────────────────────────────
+  if (authMode === 'none') {
     return (
-      <div className="h-screen bg-gray-900 flex flex-col items-center justify-center gap-4 select-none">
-        <div className="text-6xl">⚠️</div>
-        <p className="text-yellow-400 text-xl font-bold">Pantalla de cocina no configurada</p>
-        <p className="text-gray-500 text-sm">Falta el parámetro ?k= en la URL</p>
+      <div className="h-screen bg-gray-900 flex flex-col items-center justify-center gap-6 select-none">
+        <div className="text-7xl animate-pulse">🍽️</div>
+        <h1 className="text-white text-3xl font-black tracking-wide">Gorditas Luly — Cocina</h1>
+        <p className="text-gray-500 text-base text-center max-w-sm leading-relaxed">
+          Inicia sesión en la pantalla de ventas y presiona el botón <strong className="text-gray-400">Cocina</strong>,
+          <br />o abre esta pantalla desde la PC del sistema.
+        </p>
       </div>
     )
   }
@@ -52,6 +62,7 @@ export default function KitchenScreen() {
   const sorted  = [...orders].reverse()
   const lastSec = tick.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
 
+  // ── Pantalla de cocina ─────────────────────────────────────────
   return (
     <div className="h-screen bg-gray-900 flex flex-col overflow-hidden select-none">
 
@@ -84,10 +95,8 @@ export default function KitchenScreen() {
                 hour: '2-digit', minute: '2-digit', hour12: false,
               })
               return (
-                <div
-                  key={order.id}
-                  className="bg-white rounded-2xl shadow-2xl overflow-hidden"
-                >
+                <div key={order.id} className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+
                   {/* Card header */}
                   <div className="bg-orange-500 px-4 py-3 flex items-center justify-between">
                     <span className="text-white font-black text-4xl leading-none">
@@ -96,7 +105,7 @@ export default function KitchenScreen() {
                     <span className="text-orange-100 text-sm font-semibold">{hora}</span>
                   </div>
 
-                  {/* Gorditas */}
+                  {/* Gorditas con divisores por plato */}
                   <div className="px-4 pt-3 pb-2 space-y-2">
                     {order.gorditas.flatMap((g, i) => {
                       const prev = order.gorditas[i - 1]
