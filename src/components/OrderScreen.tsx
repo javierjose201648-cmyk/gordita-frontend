@@ -30,7 +30,7 @@ interface TurnoOrder {
 const ORDER_KEY = 'gordita_order_v1'
 
 export default function OrderScreen() {
-  const { user, logout } = useAuth()
+  const { user, logout, isAdmin } = useAuth()
 
   // ── Catalog ────────────────────────────────────────────────
   const [guisados,  setGuisados]  = useState<Guisado[]>([])
@@ -71,7 +71,7 @@ export default function OrderScreen() {
   const [showAdmin,    setShowAdmin]    = useState(() => window.location.hash === '#admin')
   const [showGastos,  setShowGastos]  = useState(() => window.location.hash === '#gastos')
   const [showCaja,    setShowCaja]    = useState(() => window.location.hash === '#caja')
-  const [showRefri,   setShowRefri]   = useState(() => window.location.hash === '#refri')
+  const [showRefri,   setShowRefri]   = useState(() => window.location.hash === '#refri' && isAdmin)
   const [showResumen, setShowResumen] = useState(() => window.location.hash === '#resumen')
   const [showOrdenes, setShowOrdenes] = useState(() => window.location.hash === '#ordenes')
 
@@ -90,13 +90,13 @@ export default function OrderScreen() {
       setShowAdmin(window.location.hash === '#admin')
       setShowGastos(window.location.hash === '#gastos')
       setShowCaja(window.location.hash === '#caja')
-      setShowRefri(window.location.hash === '#refri')
+      setShowRefri(window.location.hash === '#refri' && isAdmin)
       setShowResumen(window.location.hash === '#resumen')
       setShowOrdenes(window.location.hash === '#ordenes')
     }
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
-  }, [])
+  }, [isAdmin])
 
   function fetchTurnoOrders() {
     api.ordenes.getTurno()
@@ -445,13 +445,15 @@ export default function OrderScreen() {
             >
               🍽️ Cocina
             </button>
-            <button
-              onClick={() => setShowRefri(true)}
-              className="bg-orange-700 hover:bg-orange-800 active:bg-orange-900
-                         text-white text-sm px-3 py-1.5 rounded-xl transition-colors whitespace-nowrap"
-            >
-              🧊 Refri
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setShowRefri(true)}
+                className="bg-orange-700 hover:bg-orange-800 active:bg-orange-900
+                           text-white text-sm px-3 py-1.5 rounded-xl transition-colors whitespace-nowrap"
+              >
+                🧊 Refri
+              </button>
+            )}
             <button
               onClick={() => setShowGastos(true)}
               className="bg-orange-700 hover:bg-orange-800 active:bg-orange-900
