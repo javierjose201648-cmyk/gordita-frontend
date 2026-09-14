@@ -152,7 +152,7 @@ export default function KitchenScreen() {
                           </span>
                           <div className="min-w-0">
                             <p className="font-bold text-gray-800 text-base leading-tight truncate">{g.guisado}</p>
-                            <p className="text-sm text-gray-400 leading-tight">{g.masa}</p>
+                            <p className={`text-sm leading-tight ${g.masa.toLowerCase().includes('maíz') || g.masa.toLowerCase().includes('maiz') ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>{g.masa}</p>
                           </div>
                         </div>
                       )
