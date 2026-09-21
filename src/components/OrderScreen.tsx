@@ -319,11 +319,12 @@ export default function OrderScreen() {
   }
 
   // ── Payment ────────────────────────────────────────────────
-  async function handleConfirmPayment(metodo: 'efectivo' | 'tarjeta') {
+  async function handleConfirmPayment(metodo: 'efectivo' | 'tarjeta', paraLlevar: boolean) {
     setLoading(true)
     try {
       const result = await api.crearOrden({
         metodo_pago: metodo,
+        para_llevar: paraLlevar,
         items: items.map(i => ({
           tipo_masa_id: i.tipo_masa_id,
           guisado_id:   i.guisado_id,
@@ -340,7 +341,7 @@ export default function OrderScreen() {
         items.forEach(i => { next[i.masa_label] = (next[i.masa_label] ?? 0) + i.cantidad })
         return next
       })
-      showToast(`✓ Orden #${result.numero_orden} — $${result.total} (${metodo})`, 'success')
+      showToast(`✓ Orden #${result.numero_orden} — $${result.total} (${metodo}${paraLlevar ? ' · P/Llevar' : ''})`, 'success')
       resetOrder()
       fetchTurnoOrders()
     } catch (err: unknown) {

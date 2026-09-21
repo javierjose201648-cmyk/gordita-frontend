@@ -130,6 +130,7 @@ export const api = {
       numero_orden: string;
       total: number;
       estado: string;
+      para_llevar?: boolean;
       creado_en: string;
       gorditas: { guisado: string; masa: string; cantidad: number; plato: number }[];
       bebidas:  { nombre: string; tamaño: string; cantidad: number }[];
@@ -140,6 +141,7 @@ export const api = {
       numero_orden: string;
       total: number;
       estado: string;
+      para_llevar?: boolean;
       creado_en: string;
       gorditas: { guisado: string; masa: string; cantidad: number; plato: number }[];
       bebidas:  { nombre: string; tamaño: string; cantidad: number }[];

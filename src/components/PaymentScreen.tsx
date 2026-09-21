@@ -8,7 +8,7 @@ interface Props {
   items:      OrderItem[]
   drinkItems: DrinkItem[]
   total:      number
-  onConfirm:  (metodo: Metodo) => Promise<void>
+  onConfirm:  (metodo: Metodo, paraLlevar: boolean) => Promise<void>
   onCancel:   () => void
   loading:    boolean
 }
@@ -19,6 +19,7 @@ const BILLETES = [20, 50, 100, 200, 500]
 export default function PaymentScreen({ items, drinkItems, total, onConfirm, onCancel, loading }: Props) {
   const [metodo,      setMetodo]      = useState<Metodo>('efectivo')
   const [clientePaga, setClientePaga] = useState('')
+  const [paraLlevar,  setParaLlevar]  = useState(false)
 
   const pagado = parseInt(clientePaga) || 0
   const cambio = pagado - total
@@ -107,6 +108,28 @@ export default function PaymentScreen({ items, drinkItems, total, onConfirm, onC
             </div>
           </div>
 
+          {/* Servicio: comer aquí / para llevar */}
+          <div className="bg-white rounded-2xl shadow-md p-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Servicio
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {([false, true] as boolean[]).map(llevar => (
+                <button
+                  key={String(llevar)}
+                  onClick={() => setParaLlevar(llevar)}
+                  className={`py-4 rounded-xl font-bold text-lg transition-colors border-2 ${
+                    paraLlevar === llevar
+                      ? 'bg-orange-500 border-orange-500 text-white shadow-md shadow-orange-200'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-orange-300'
+                  }`}
+                >
+                  {llevar ? '🛍️ Para llevar' : '🍽️ Comer aquí'}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Tarjeta: mensaje simple */}
           {metodo === 'tarjeta' && (
             <div className="bg-white rounded-2xl shadow-md p-4 text-center">
@@ -190,7 +213,7 @@ export default function PaymentScreen({ items, drinkItems, total, onConfirm, onC
       {/* Botón cobrar */}
       <div className="p-4 shrink-0 bg-orange-50 border-t border-orange-100">
         <button
-          onClick={() => onConfirm(metodo)}
+          onClick={() => onConfirm(metodo, paraLlevar)}
           disabled={!canCobrar}
           className="w-full bg-green-500 hover:bg-green-600 active:bg-green-700
                      disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed

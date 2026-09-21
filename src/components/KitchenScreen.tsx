@@ -108,10 +108,18 @@ export default function KitchenScreen() {
                 <div key={order.id} className={`bg-white rounded-2xl shadow-2xl overflow-hidden ${doble ? 'col-span-2' : ''}`}>
 
                   {/* Card header — compacto */}
-                  <div className="bg-orange-500 px-3 py-2 flex items-center justify-between">
-                    <span className="text-white font-black text-2xl leading-none">
-                      #{order.numero_orden}
-                    </span>
+                  <div className="bg-orange-500 px-3 py-2 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-white font-black text-2xl leading-none">
+                        #{order.numero_orden}
+                      </span>
+                      {order.para_llevar && (
+                        <span className="bg-white text-orange-600 font-black text-xs leading-tight
+                                         px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                          P/Llevar
+                        </span>
+                      )}
+                    </div>
                     <span className="text-orange-100 text-sm font-semibold">{hora}</span>
                   </div>
 
