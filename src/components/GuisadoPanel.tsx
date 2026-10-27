@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
-import type { Guisado, TipoMasa, OrderItem } from '../types'
+import type { Guisado, TipoMasa, Extra, OrderItem } from '../types'
 import NumericKeypad from './NumericKeypad'
 
 interface Props {
   guisados:       Guisado[]
   tiposMasa:      TipoMasa[]
+  queso?:         Extra        // undefined = extra no disponible → botón oculto
   masaFijaId?:    number
   comboMode:      boolean
   onAdd:          (item: Omit<OrderItem, 'localId'>) => void
@@ -16,6 +17,7 @@ interface Props {
 export default function GuisadoPanel({
   guisados,
   tiposMasa,
+  queso,
   masaFijaId,
   comboMode,
   onAdd,
@@ -29,6 +31,8 @@ export default function GuisadoPanel({
   // no useEffect needed, no flash.
   const [masaId, setMasaId] = useState<number | null>(null)
   const [miniValue, setMiniValue] = useState('')
+  // Aplica solo a la siguiente gordita agregada — se apaga solo para no cobrar queso de más
+  const [conQueso, setConQueso] = useState(false)
 
   // Find Harina by actual name (not by a mapping function that breaks new masas).
   // Falls back to first available masa if none contains "harina".
@@ -50,7 +54,8 @@ export default function GuisadoPanel({
   function handleGuisado(g: Guisado) {
     if (!selectedMasa || activeMasaId == null) return
     const cantidad        = Math.max(1, parseInt(miniValue) || 1)
-    const precio_unitario = Number(selectedMasa.precio)
+    const quesoActivo     = conQueso && !!queso
+    const precio_unitario = Number(selectedMasa.precio) + (quesoActivo ? Number(queso.precio) : 0)
 
     onAdd({
       guisado_id:     g.id,
@@ -60,9 +65,25 @@ export default function GuisadoPanel({
       cantidad,
       precio_unitario,
       subtotal: precio_unitario * cantidad,
+      con_queso:      quesoActivo,
     })
     setMiniValue('')
+    setConQueso(false)
   }
+
+  const quesoButton = queso && (
+    <button
+      onClick={() => setConQueso(v => !v)}
+      className={`w-full h-full py-2 rounded-xl font-bold transition-colors border-2 ${
+        conQueso
+          ? 'bg-yellow-400 border-yellow-500 text-yellow-900 shadow-md shadow-yellow-200'
+          : 'bg-white border-dashed border-yellow-400 text-yellow-700 hover:bg-yellow-50'
+      }`}
+    >
+      <div className="text-sm">🧀 Queso</div>
+      <div className="text-xs opacity-70">+${Number(queso.precio)}</div>
+    </button>
+  )
 
   return (
     <div className="flex flex-col gap-2.5 h-full overflow-y-auto">
@@ -93,12 +114,16 @@ export default function GuisadoPanel({
         </div>
       )}
 
-      {/* Masa selector — hidden when locked by a combo */}
+      {/* Masa selector — hidden when locked by a combo (queso sigue disponible) */}
       {masaFijaId ? (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl px-3 py-2 text-center">
-          <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
-            Masa fija: {masas.find(m => m.id === masaFijaId)?.nombre ?? 'Harina'}
-          </p>
+        <div className="grid grid-cols-4 gap-2">
+          <div className={`bg-orange-50 border border-orange-200 rounded-xl px-3 py-2
+                           flex items-center justify-center ${queso ? 'col-span-3' : 'col-span-4'}`}>
+            <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
+              Masa fija: {masas.find(m => m.id === masaFijaId)?.nombre ?? 'Harina'}
+            </p>
+          </div>
+          {quesoButton}
         </div>
       ) : (
         <div>
@@ -121,6 +146,8 @@ export default function GuisadoPanel({
                 <div className="text-xs opacity-70">${m.precio} c/u</div>
               </button>
             ))}
+            {/* Queso en la última columna de la fila, separado de las masas */}
+            {quesoButton && <div className="col-start-4">{quesoButton}</div>}
           </div>
         </div>
       )}

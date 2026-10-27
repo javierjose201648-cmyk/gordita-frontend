@@ -103,7 +103,11 @@ export default function OrderTable({
                       {item.cantidad}× {item.guisado_nombre}
                     </p>
                     <p className="text-xs text-orange-600 font-medium">
-                      {item.masa_label}{locked && ' · incluido'}
+                      {item.masa_label}
+                      {item.con_queso && (
+                        <span className="ml-1 bg-yellow-100 text-yellow-800 rounded px-1">+ Queso</span>
+                      )}
+                      {locked && ' · incluido'}
                     </p>
                   </div>
                   <div className="text-right shrink-0">

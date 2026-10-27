@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { Guisado, TipoMasa, Refresco, OrderItem, DrinkItem } from '../types'
+import type { Guisado, TipoMasa, Extra, Refresco, OrderItem, DrinkItem } from '../types'
 import { api } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import GuisadoPanel from './GuisadoPanel'
@@ -23,7 +23,7 @@ interface TurnoOrder {
   numero_orden: string
   total: number
   creado_en: string
-  gorditas: { guisado: string; masa: string; cantidad: number; plato: number }[]
+  gorditas: { guisado: string; masa: string; cantidad: number; plato: number; extras?: string[] }[]
   bebidas:  { nombre: string; tamaño: string; cantidad: number }[]
 }
 
@@ -36,6 +36,7 @@ export default function OrderScreen() {
   const [guisados,  setGuisados]  = useState<Guisado[]>([])
   const [tiposMasa, setTiposMasa] = useState<TipoMasa[]>([])
   const [refrescos, setRefrescos] = useState<Refresco[]>([])
+  const [queso,     setQueso]     = useState<Extra | undefined>(undefined)
 
   // ── Order state ────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>('guisados')
@@ -114,6 +115,9 @@ export default function OrderScreen() {
     api.refrescos()
       .then(setRefrescos)
       .catch(() => showToast('Error cargando bebidas', 'error'))
+    api.extras()
+      .then(es => setQueso(es.find(e => e.nombre.toLowerCase().startsWith('queso'))))
+      .catch(() => showToast('Error cargando extras', 'error'))
     fetchTurnoOrders()
   }, [])
 
@@ -142,12 +146,13 @@ export default function OrderScreen() {
               + drinkItems.reduce((s, i) => s + i.subtotal, 0)
 
   // ── Gordita handlers ───────────────────────────────────────
-  // Adds directly to items. Merges with existing non-locked entries of same guisado+masa+plato.
+  // Adds directly to items. Merges with existing non-locked entries of same guisado+masa+queso+plato.
   const handleAddItem = useCallback((item: Omit<OrderItem, 'localId'>) => {
     setItems(prev => {
       const existing = prev.find(
         i => i.guisado_id === item.guisado_id &&
              i.tipo_masa_id === item.tipo_masa_id &&
+             !!i.con_queso === !!item.con_queso &&
              (i.plato ?? 1) === currentPlato &&
              !lockedItemIds.has(i.localId)
       )
@@ -330,6 +335,7 @@ export default function OrderScreen() {
           guisado_id:   i.guisado_id,
           cantidad:     i.cantidad,
           plato:        i.plato ?? 1,
+          ...(i.con_queso && queso ? { extras: [{ extra_id: queso.id, cantidad: 1 }] } : {}),
         })),
         refrescos: drinkItems.map(d => ({
           refresco_id: d.refresco_id,
@@ -525,6 +531,7 @@ export default function OrderScreen() {
             <GuisadoPanel
               guisados={guisados}
               tiposMasa={tiposMasa}
+              queso={queso}
               masaFijaId={masaFijaId ?? undefined}
               comboMode={comboTarget !== null}
               onAdd={handleAddItem}
@@ -608,6 +615,9 @@ export default function OrderScreen() {
                             <p key={i} className="text-xs text-gray-600 leading-tight">
                               {g.cantidad}× <span className="font-medium">{g.guisado}</span>
                               <span className="text-gray-400"> · {g.masa}</span>
+                              {g.extras?.map(e => (
+                                <span key={e} className="text-yellow-600 font-medium"> · {e}</span>
+                              ))}
                             </p>
                           )
                           return els

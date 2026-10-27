@@ -29,6 +29,14 @@ export interface OrderItem {
   precio_unitario: number;
   subtotal: number;
   plato?: number;         // número de plato (1, 2, 3…) — separador visual, no afecta precio
+  con_queso?: boolean;    // precio_unitario ya incluye el precio del queso
+}
+
+export interface Extra {
+  id: number;
+  nombre: string;
+  precio: number;
+  disponible: boolean;
 }
 
 export interface CategoriaRefresco {

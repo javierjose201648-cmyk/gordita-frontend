@@ -81,10 +81,15 @@ export default function OrdenesPanel({ onClose, onChanged }: Props) {
   }
 
   // ── Derived totals ────────────────────────────────────────────
+  // precio_unitario viene sin extras (queso) — se suman aquí
+  function precioItem(i: FullOrder['items'][number]) {
+    return Number(i.precio_unitario) + (i.extras ?? []).reduce((s, e) => s + Number(e.precio), 0)
+  }
+
   const editTotal = editOrder
     ? editOrder.items.reduce((s, i) => {
         const qty = editState.items[i.id] ?? i.cantidad
-        return s + Number(i.precio_unitario) * qty
+        return s + precioItem(i) * qty
       }, 0) +
       editOrder.refrescos.reduce((s, r) => {
         const qty = editState.refrescos[r.id] ?? r.cantidad
@@ -192,7 +197,13 @@ export default function OrdenesPanel({ onClose, onChanged }: Props) {
                           <p className="font-semibold text-gray-800 text-sm truncate">
                             {item.guisado_nombre}
                           </p>
-                          <p className="text-xs text-gray-500">{item.tipo_masa_nombre} · ${Number(item.precio_unitario)} c/u</p>
+                          <p className="text-xs text-gray-500">
+                            {item.tipo_masa_nombre}
+                            {(item.extras ?? []).map(e => (
+                              <span key={e.extra_nombre} className="text-yellow-700 font-medium"> + {e.extra_nombre}</span>
+                            ))}
+                            {' '}· ${precioItem(item)} c/u
+                          </p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <button
@@ -328,7 +339,7 @@ export default function OrdenesPanel({ onClose, onChanged }: Props) {
                 {/* Card body */}
                 <div className="px-4 py-2 text-xs text-gray-600 space-y-0.5">
                   {order.gorditas.map((g, i) => (
-                    <p key={i}>• {g.guisado} ({g.masa}) × {g.cantidad}</p>
+                    <p key={i}>• {g.guisado} ({g.masa}{g.extras?.length ? ` + ${g.extras.join(', ')}` : ''}) × {g.cantidad}</p>
                   ))}
                   {order.bebidas.map((b, i) => (
                     <p key={i}>🥤 {b.nombre} {b.tamaño} × {b.cantidad}</p>

@@ -1,4 +1,4 @@
-import type { Guisado, TipoMasa, Refresco, CategoriaRefresco, User, Gasto, RefriEntry, ResumenDia, CajaMovimiento } from '../types';
+import type { Guisado, TipoMasa, Extra, Refresco, CategoriaRefresco, User, Gasto, RefriEntry, ResumenDia, CajaMovimiento } from '../types';
 
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:3000';
 
@@ -77,6 +77,7 @@ export const api = {
   guisados:  () => req<Guisado[]>('/api/guisados/disponibles'),
   tiposMasa: () => req<TipoMasa[]>('/api/tipos-masa'),
   refrescos: () => req<Refresco[]>('/api/refrescos/disponibles'),
+  extras:    () => req<Extra[]>('/api/extras/disponibles'),
 
   // Refri inventory (all users)
   refri: {
@@ -132,7 +133,7 @@ export const api = {
       estado: string;
       para_llevar?: boolean;
       creado_en: string;
-      gorditas: { guisado: string; masa: string; cantidad: number; plato: number }[];
+      gorditas: { guisado: string; masa: string; cantidad: number; plato: number; extras?: string[] }[];
       bebidas:  { nombre: string; tamaño: string; cantidad: number }[];
     }[]>(key, '/api/ordenes/cocina'),
 
@@ -143,7 +144,7 @@ export const api = {
       estado: string;
       para_llevar?: boolean;
       creado_en: string;
-      gorditas: { guisado: string; masa: string; cantidad: number; plato: number }[];
+      gorditas: { guisado: string; masa: string; cantidad: number; plato: number; extras?: string[] }[];
       bebidas:  { nombre: string; tamaño: string; cantidad: number }[];
     }[]>('/api/ordenes/turno'),
 
@@ -159,8 +160,9 @@ export const api = {
         tipo_masa_id: number;
         tipo_masa_nombre: string;
         cantidad: number;
-        precio_unitario: number;
+        precio_unitario: number;   // sin extras
         subtotal: number;
+        extras: { extra_nombre: string; precio: number }[];
       }[];
       refrescos: {
         id: number;
