@@ -34,7 +34,18 @@ async function generarPDF(resumen: ResumenDia): Promise<void> {
   const marR  = 190  // margen derecho
   const anchoContenido = marR - marL
   const centro = 105
+  const altoPagina = doc.internal.pageSize.getHeight()
+  const marSup = 20  // margen superior en páginas 2+
+  const marInf = 20  // margen inferior
   let y = 12
+
+  // Si no cabe un bloque de `alto` mm en la hoja actual, pasa a una nueva
+  function asegurarEspacio(alto: number) {
+    if (y + alto > altoPagina - marInf) {
+      doc.addPage()
+      y = marSup
+    }
+  }
 
   // ── Logo ──
   try {
@@ -99,6 +110,8 @@ async function generarPDF(resumen: ResumenDia): Promise<void> {
 
   // ── Helper: sección ──
   function seccion(titulo: string) {
+    // título + encabezado de tabla + primera fila, para no dejar el título huérfano
+    asegurarEspacio(9 + 4 + 5)
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(11)
     doc.setTextColor(93, 42, 14)
@@ -114,13 +127,19 @@ async function generarPDF(resumen: ResumenDia): Promise<void> {
     doc.setFont('helvetica', negrita ? 'bold' : 'normal')
     doc.setFontSize(10)
     doc.setTextColor(40, 40, 40)
-    doc.text(col1, marL, y)
+    // textos largos (p. ej. conceptos de gasto) se parten en varias líneas
+    const anchoCol1 = col2 ? anchoContenido * 0.6 - 20 : anchoContenido - 30
+    const lineas: string[] = doc.splitTextToSize(col1, anchoCol1)
+    const interlineado = 4.5
+    asegurarEspacio(5 + (lineas.length - 1) * interlineado)
+    lineas.forEach((linea, i) => doc.text(linea, marL, y + i * interlineado))
     doc.text(col2, marL + anchoContenido * 0.6, y, { align: 'right' })
     doc.text(col3, marR, y, { align: 'right' })
-    y += 5
+    y += 5 + (lineas.length - 1) * interlineado
   }
 
   function encabezadoTabla(c1: string, c2: string, c3: string) {
+    asegurarEspacio(4 + 5)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8.5)
     doc.setTextColor(130, 130, 130)
@@ -143,6 +162,7 @@ async function generarPDF(resumen: ResumenDia): Promise<void> {
     for (const g of resumen.gorditas) {
       filaTabla(g.masa_nombre, String(g.cantidad), `$${g.subtotal.toFixed(2)}`)
     }
+    asegurarEspacio(3 + 5)  // línea + fila de total juntas
     doc.setDrawColor(180, 180, 180)
     doc.setLineWidth(0.3)
     doc.line(marL, y, marR, y)
@@ -165,6 +185,7 @@ async function generarPDF(resumen: ResumenDia): Promise<void> {
     for (const r of resumen.refrescos_vendidos) {
       filaTabla(r.categoria_nombre, String(r.cantidad), `$${r.subtotal.toFixed(2)}`)
     }
+    asegurarEspacio(3 + 5)  // línea + fila de total juntas
     doc.setDrawColor(180, 180, 180)
     doc.setLineWidth(0.3)
     doc.line(marL, y, marR, y)
@@ -187,6 +208,7 @@ async function generarPDF(resumen: ResumenDia): Promise<void> {
     for (const g of resumen.gastos) {
       filaTabla(g.concepto, '', `-$${parseFloat(String(g.monto)).toFixed(2)}`)
     }
+    asegurarEspacio(3 + 5)  // línea + fila de total juntas
     doc.setDrawColor(180, 180, 180)
     doc.setLineWidth(0.3)
     doc.line(marL, y, marR, y)
@@ -196,6 +218,8 @@ async function generarPDF(resumen: ResumenDia): Promise<void> {
   }
 
   // ── Resumen final ──
+  // el bloque completo (~48 mm hasta el pie) va junto en una misma hoja
+  asegurarEspacio(50)
   y += 2
   doc.setDrawColor(93, 42, 14)
   doc.setLineWidth(0.8)
@@ -245,6 +269,18 @@ async function generarPDF(resumen: ResumenDia): Promise<void> {
   doc.setFontSize(8)
   doc.setTextColor(180, 180, 180)
   doc.text('Generado por Gorditas Luly POS', centro, y, { align: 'center' })
+
+  // ── Numeración de páginas (solo si hay más de una) ──
+  const totalPaginas = doc.getNumberOfPages()
+  if (totalPaginas > 1) {
+    for (let i = 1; i <= totalPaginas; i++) {
+      doc.setPage(i)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(150, 150, 150)
+      doc.text(`Página ${i} de ${totalPaginas}`, marR, altoPagina - 10, { align: 'right' })
+    }
+  }
 
   // ── Descargar ──
   const nombreArchivo = `resumen-${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}.pdf`
